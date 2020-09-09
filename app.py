@@ -7,8 +7,12 @@ from typing import Dict
 
 REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
 REDCAP_API_URL = os.environ['REDCAP_API_URL']
+IS_COMPLETE = 1
 app = Flask(__name__)
 
+
+def is_complete(code: str) -> bool:
+    return int(code) >= IS_COMPLETE
 
 def fetch_net_ids() -> Dict[str, str]:
     """
@@ -22,6 +26,7 @@ def fetch_net_ids() -> Dict[str, str]:
         'csvDelimiter': '',
         'fields[0]': 'netid',
         'fields[1]': 'record_id',
+        'fields[2]': 'eligibility_screening_complete',
         'rawOrLabel': 'raw',
         'rawOrLabelHeaders': 'raw',
         'exportCheckboxLabel': 'false',
@@ -32,7 +37,12 @@ def fetch_net_ids() -> Dict[str, str]:
     response = requests.post(REDCAP_API_URL, data=data)
     response.raise_for_status()
 
-    return { record['netid']: record['record_id'] for record in response.json() }
+    return {
+        record['netid']: {
+            'record_id': record['record_id'],
+            'eligibility_screening_complete': record['eligibility_screening_complete']
+        } for record in response.json()
+    }
 
 def register_net_id(net_id: str) -> str:
     """
@@ -93,8 +103,13 @@ def main():
         # TODO -- generate a survey link for a particular day
         # We are awaiting finalization of the REDCap project to know how
         # daily attestations (repeating instruments) will be implemented.
-        return "Congrats, you're already registered under record ID " \
-            f"{registered_net_ids[net_id]}."
+        if is_complete(registered_net_ids[net_id]['eligibility_screening_complete']):
+            return f"Congrats, {net_id}, you're already registered under record ID " \
+                f"{registered_net_ids[net_id]['record_id']} and your eligibility " \
+                "screening is complete!"
+        else:
+            record_id = registered_net_ids[net_id]['record_id']
+            return redirect(generate_survey_link(record_id))
 
     else:
         # If not in REDCap project, create new record
