@@ -2,7 +2,7 @@ import os
 import json
 import requests
 from flask import Flask, redirect, request
-from typing import Dict
+from typing import Dict, Optional
 
 
 REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
@@ -11,9 +11,10 @@ IS_COMPLETE = 1
 app = Flask(__name__)
 
 
-def fetch_net_ids() -> Dict[str, str]:
+def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
     """
-    Fetches all the existing NetIDs in the given REDCap project.
+    Exports a REDCap record matching the given *net_id*. Returns None if no
+    match is found.
     """
     data = {
         'token': REDCAP_API_TOKEN,
@@ -24,6 +25,7 @@ def fetch_net_ids() -> Dict[str, str]:
         'fields[0]': 'netid',
         'fields[1]': 'record_id',
         'fields[2]': 'eligibility_screening_complete',
+        'filterLogic': f'[netid] = "{net_id}"',
         'rawOrLabel': 'raw',
         'rawOrLabelHeaders': 'raw',
         'exportCheckboxLabel': 'false',
@@ -34,11 +36,13 @@ def fetch_net_ids() -> Dict[str, str]:
     response = requests.post(REDCAP_API_URL, data=data)
     response.raise_for_status()
 
+    if len(response.json()) == 0:
+        return None
+
+    user_data = response.json()[0]
     return {
-        record['netid']: {
-            'record_id': record['record_id'],
-            'eligibility_screening_complete': record['eligibility_screening_complete']
-        } for record in response.json()
+        'record_id': user_data['record_id'],
+        'eligibility_screening_complete': user_data['eligibility_screening_complete']
     }
 
 def register_net_id(net_id: str) -> str:
@@ -109,23 +113,19 @@ def main():
         net_id = 'KaasenG'
         pass
 
-    registered_users = fetch_net_ids()
+    user_data = fetch_user_data(net_id)
 
-    if net_id not in registered_users:
+    if user_data is None:
         # If not in REDCap project, create new record
-        registered_users[net_id] = {'record_id': register_net_id(net_id)}
-
-    record_id = registered_users[net_id]['record_id']
+        user_data = {'record_id': register_net_id(net_id)}
 
     # TODO -- generate a survey link for a particular day
     # We are awaiting finalization of the REDCap project to know how
     # daily attestations (repeating instruments) will be implemented.
-    eligibility_screening_response = registered_users.get('eligibility_screening_complete')
-
-    if eligibility_screening_complete(registered_users[net_id]):
+    if eligibility_screening_complete(user_data):
         return f"Congrats, {net_id}, you're already registered under record ID " \
-            f"{registered_users[net_id]['record_id']} and your eligibility " \
+            f"{user_data['record_id']} and your eligibility " \
             "screening is complete!"
 
     # Generate a link to the eligibility questionnaire, and then redirect
-    return redirect(generate_survey_link(record_id))
+    return redirect(generate_survey_link(user_data['record_id']))
