@@ -15,7 +15,11 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
     """
     Exports a REDCap record matching the given *net_id*. Returns None if no
     match is found.
+
+    Raises an :class:`AssertionError` if REDCap returns multiple matches for the
+    given *net_id*.
     """
+    filter_logic = f'[netid] = "{net_id}"'
     data = {
         'token': REDCAP_API_TOKEN,
         'content': 'record',
@@ -25,7 +29,7 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
         'fields[0]': 'netid',
         'fields[1]': 'record_id',
         'fields[2]': 'eligibility_screening_complete',
-        'filterLogic': f'[netid] = "{net_id}"',
+        'filterLogic': filter_logic,
         'rawOrLabel': 'raw',
         'rawOrLabelHeaders': 'raw',
         'exportCheckboxLabel': 'false',
@@ -38,6 +42,9 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
 
     if len(response.json()) == 0:
         return None
+
+    assert len(response.json()) == 1, \
+        f"Error: Multiple records matching {filter_logic}"
 
     user_data = response.json()[0]
     return {
