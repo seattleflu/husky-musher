@@ -3,11 +3,11 @@ import json
 import requests
 from flask import Flask, redirect, request
 from typing import Dict, Optional
+from id3c.cli.redcap import is_complete
 
 
 REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
 REDCAP_API_URL = os.environ['REDCAP_API_URL']
-IS_COMPLETE = 1
 app = Flask(__name__)
 
 
@@ -69,20 +69,6 @@ def register_net_id(net_id: str) -> str:
     response.raise_for_status()
     return response.json()[0]
 
-def eligibility_screening_complete(user_data: Dict[str, str]) -> bool:
-    """
-    Returns True if a participant's eligiblity screening questionnaire is
-    complete according to their *user_data*. Otherwise returns False.
-    """
-    def is_complete(code: str) -> bool:
-        return int(code) >= IS_COMPLETE
-
-    eligibility_screening_response = user_data.get('eligibility_screening_complete')
-
-    if not eligibility_screening_response:
-        return False
-
-    return is_complete(eligibility_screening_response)
 
 def generate_survey_link(record_id: str) -> str:
     """
@@ -122,7 +108,7 @@ def main():
     # TODO -- generate a survey link for a particular day
     # We are awaiting finalization of the REDCap project to know how
     # daily attestations (repeating instruments) will be implemented.
-    if eligibility_screening_complete(user_data):
+    if is_complete('eligibility_screening', user_data):
         return f"Congrats, {net_id}, you're already registered under record ID " \
             f"{user_data['record_id']} and your eligibility " \
             "screening is complete!"

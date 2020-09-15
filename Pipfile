@@ -6,6 +6,7 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+id3c = {git = "https://github.com/seattleflu/id3c"}
 flask = "*"
 requests = "*"
 
