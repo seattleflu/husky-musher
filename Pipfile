@@ -9,6 +9,7 @@ verify_ssl = true
 id3c = {git = "https://github.com/seattleflu/id3c"}
 flask = "*"
 requests = "*"
+fsspec = "*"
 
 [requires]
 python_version = "3.6"
