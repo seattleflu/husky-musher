@@ -104,7 +104,17 @@ def main():
         net_id = 'KaasenG'
         pass
 
-    user_data = fetch_user_data(net_id)
+    try:
+        user_data = fetch_user_data(net_id)
+
+    except Exception as e:
+        app.logger.warning(f'Failed to fetch REDCap data for user {net_id}: {e}')
+
+        return """
+            Error: Something went wrong. Please contact Husky Coronavirus Testing support by
+            emailing <a href=\"mailto:huskytest@uw.edu\">huskytest@uw.edu</a> or by calling
+            <a href=\"tel:+12066162414\">(206) 616-2414</a>.
+            """
 
     if user_data is None:
         # If not in REDCap project, create new record
