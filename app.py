@@ -29,6 +29,8 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
         'fields[0]': 'netid',
         'fields[1]': 'record_id',
         'fields[2]': 'eligibility_screening_complete',
+        'fields[3]': 'consent_form_complete',
+        'fields[4]': 'enrollment_questionnaire_complete',
         'filterLogic': filter_logic,
         'rawOrLabel': 'raw',
         'rawOrLabelHeaders': 'raw',
@@ -46,11 +48,7 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
     assert len(response.json()) == 1, \
         f"Error: Multiple records matching {filter_logic}"
 
-    user_data = response.json()[0]
-    return {
-        'record_id': user_data['record_id'],
-        'eligibility_screening_complete': user_data['eligibility_screening_complete']
-    }
+    return response.json()[0]
 
 def register_net_id(net_id: str) -> str:
     """
@@ -115,10 +113,15 @@ def main():
     # TODO -- generate a survey link for a particular day
     # We are awaiting finalization of the REDCap project to know how
     # daily attestations (repeating instruments) will be implemented.
-    if is_complete('eligibility_screening', user_data):
+    if is_complete('eligibility_screening', user_data) and \
+        is_complete('consent_form', user_data) and \
+        is_complete('enrollment_questionnaire', user_data):
         return f"Congrats, {net_id}, you're already registered under record ID " \
             f"{user_data['record_id']} and your eligibility " \
-            "screening is complete!"
+            "screening, consent form, and enrollment questionnaires are complete!"
 
-    # Generate a link to the eligibility questionnaire, and then redirect
+    # Generate a link to the eligibility questionnaire, and then redirect.
+    # Because of REDCap's survey queue logic, we can point a participant to an
+    # upstream survey. If they've completed it, REDCap will automatically direct
+    # them to the next, uncompleted survey in the queue.
     return redirect(generate_survey_link(user_data['record_id']))
