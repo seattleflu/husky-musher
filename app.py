@@ -52,8 +52,8 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
     if len(response.json()) == 0:
         return None
 
-    assert len(response.json()) == 1, \
-        f"Error: Multiple records matching {filter_logic}"
+    assert len(response.json()) == 1, "Multiple records exist with same NetID: " \
+        f"{[ record['record_id'] for record in response.json() ]}"
 
     return response.json()[0]
 
@@ -118,7 +118,7 @@ def main():
         user_data = fetch_user_data(net_id)
 
     except Exception as e:
-        app.logger.warning(f'Failed to fetch REDCap data for user {net_id}: {e}')
+        app.logger.warning(f'Failed to fetch REDCap data: {e}')
         return ERROR_MESSAGE
 
     if user_data is None:
