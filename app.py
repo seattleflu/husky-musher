@@ -8,6 +8,11 @@ from id3c.cli.redcap import is_complete
 
 REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
 REDCAP_API_URL = os.environ['REDCAP_API_URL']
+ERROR_MESSAGE = """
+    Error: Something went wrong. Please contact Husky Coronavirus Testing support by
+    emailing <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a> or by calling
+    <a href="tel:+12066162414">(206) 616-2414</a>.
+"""
 app = Flask(__name__)
 
 
@@ -101,22 +106,20 @@ def main():
     # Get NetID from Shibboleth data
     net_id = request.remote_user
 
-    while not net_id:
-        # TODO: Redirect to Shibboleth login
+    if not net_id:
+        # TODO for testing purposes only
         net_id = 'KaasenG'
-        pass
+
+    if not net_id:
+        app.logger.warning('Failed to get NetID for user')
+        return ERROR_MESSAGE
 
     try:
         user_data = fetch_user_data(net_id)
 
     except Exception as e:
         app.logger.warning(f'Failed to fetch REDCap data for user {net_id}: {e}')
-
-        return """
-            Error: Something went wrong. Please contact Husky Coronavirus Testing support by
-            emailing <a href=\"mailto:huskytest@uw.edu\">huskytest@uw.edu</a> or by calling
-            <a href=\"tel:+12066162414\">(206) 616-2414</a>.
-            """
+        return ERROR_MESSAGE
 
     if user_data is None:
         # If not in REDCap project, create new record
