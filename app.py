@@ -19,6 +19,11 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
     Raises an :class:`AssertionError` if REDCap returns multiple matches for the
     given *net_id*.
     """
+    fields = [
+        'netid', 'record_id', 'eligibility_screening_complete', 'consent_form_complete',
+        'enrollment_questionnaire_complete'
+    ]
+
     filter_logic = f'[netid] = "{net_id}"'
     data = {
         'token': REDCAP_API_TOKEN,
@@ -26,11 +31,6 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
         'format': 'json',
         'type': 'flat',
         'csvDelimiter': '',
-        'fields[0]': 'netid',
-        'fields[1]': 'record_id',
-        'fields[2]': 'eligibility_screening_complete',
-        'fields[3]': 'consent_form_complete',
-        'fields[4]': 'enrollment_questionnaire_complete',
         'filterLogic': filter_logic,
         'rawOrLabel': 'raw',
         'rawOrLabelHeaders': 'raw',
@@ -39,6 +39,8 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
         'exportDataAccessGroups': 'false',
         'returnFormat': 'json'
     }
+    data['fields'] = ",".join(map(str, fields))
+
     response = requests.post(REDCAP_API_URL, data=data)
     response.raise_for_status()
 
