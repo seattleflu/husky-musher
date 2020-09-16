@@ -142,3 +142,13 @@ def main():
     # upstream survey. If they've completed it, REDCap will automatically direct
     # them to the next, uncompleted survey in the queue.
     return redirect(generate_survey_link(user_data['record_id']))
+
+
+# Always include a Cache-Control: no-store header in the response so browsers
+# or intervening caches don't save pages across auth'd users.  Unlikely, but
+# possible.  This is also appropriate so that users always get a fresh REDCap
+# lookup.
+@app.after_request
+def set_cache_control(response):
+    response.headers["Cache-Control"] = "no-store"
+    return response
