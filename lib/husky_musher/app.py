@@ -54,7 +54,7 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
     if len(response.json()) == 0:
         return None
 
-    assert len(response.json()) == 1, "Multiple records exist with same NetID: " \
+    assert len(response.json()) == 1, "Multiple records exist with same record ID: " \
         f"{[ record['record_id'] for record in response.json() ]}"
 
     return response.json()[0]
