@@ -104,14 +104,16 @@ def generate_survey_link(record_id: str) -> str:
 @app.route('/')
 def main():
     # Get NetID from Shibboleth data
-    net_id = request.remote_user
+    remote_user = request.remote_user
+    net_id = request.environ.get("uid")
 
-    if not net_id:
+    if not remote_user:
         # TODO for testing purposes only
+        remote_user = 'KaasenG@washington.edu'
         net_id = 'KaasenG'
 
-    if not net_id:
-        app.logger.warning('Failed to get NetID for user')
+    if not (remote_user and net_id):
+        app.logger.error('No remote user!')
         return ERROR_MESSAGE
 
     try:
