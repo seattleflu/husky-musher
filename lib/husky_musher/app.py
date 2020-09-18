@@ -4,7 +4,6 @@ import requests
 from flask import Flask, redirect, request
 from typing import Dict, Optional
 from id3c.cli.redcap import is_complete
-from husky_musher.middleware import ForwardedRemoteUser
 
 
 REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
@@ -15,7 +14,6 @@ ERROR_MESSAGE = """
     <a href="tel:+12066162414">(206) 616-2414</a>.
 """
 app = Flask(__name__)
-app.wsgi_app = ForwardedRemoteUser(app.wsgi_app)
 
 
 def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
