@@ -3,11 +3,13 @@ import json
 import requests
 from flask import Flask, redirect, request
 from typing import Dict, Optional
+from datetime import datetime
 from id3c.cli.redcap import is_complete
 
 
 REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
 REDCAP_API_URL = os.environ['REDCAP_API_URL']
+STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
 ERROR_MESSAGE = """
     <p>Error: Something went wrong. Please contact Husky Coronavirus Testing support by
     emailing <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a> or by calling
@@ -87,20 +89,26 @@ def register_participant(user_info: dict) -> str:
     return response.json()[0]
 
 
-def generate_survey_link(record_id: str) -> str:
+def generate_survey_link(record_id: str, event: str, instrument: str, instance: int = None) -> str:
     """
-    Returns a generated survey link to the eligibility screening instrument for
-    the given *record_id*.
+    Returns a generated survey link for the given *instrument* within the
+    *event* of the *record_id*.
+
+    Will include the repeat *instance* if provided.
     """
     data = {
         'token': REDCAP_API_TOKEN,
         'content': 'surveyLink',
         'format': 'json',
-        'instrument': 'eligibility_screening',
-        'event': 'enrollment_arm_1',  # TODO subject to change
+        'instrument': instrument,
+        'event': event,
         'record': record_id,
         'returnFormat': 'json'
     }
+
+    if instance:
+        data['repeat_instance'] = str(instance)
+
     response = requests.post(REDCAP_API_URL, data=data)
     response.raise_for_status()
     return response.text
@@ -132,21 +140,34 @@ def main():
         new_record_id = register_participant(user_info)
         redcap_record = { 'record_id': new_record_id }
 
-    # TODO -- generate a survey link for a particular day
-    # We are awaiting finalization of the REDCap project to know how
-    # daily attestations (repeating instruments) will be implemented.
-    if is_complete('eligibility_screening', redcap_record) and \
-        is_complete('consent_form', redcap_record) and \
-        is_complete('enrollment_questionnaire', redcap_record):
-        return f"Congrats, {remote_user}, you're already registered under record ID " \
-            f"{redcap_record['record_id']} and your eligibility " \
-            "screening, consent form, and enrollment questionnaires are complete!"
-
-    # Generate a link to the eligibility questionnaire, and then redirect.
     # Because of REDCap's survey queue logic, we can point a participant to an
     # upstream survey. If they've completed it, REDCap will automatically direct
     # them to the next, uncompleted survey in the queue.
-    return redirect(generate_survey_link(redcap_record['record_id']))
+    event = 'enrollment_arm_1'
+    instrument = 'eligibility_screening'
+    repeat_instance = None
+
+    # If all enrollment event instruments are complete, point participants
+    # to today's daily attestation instrument.
+    # If the participant has already completed the daily attestation,
+    # REDCap will prevent the participant from filling out the survey again.
+    if is_complete('eligibility_screening', redcap_record) and \
+        is_complete('consent_form', redcap_record) and \
+        is_complete('enrollment_questionnaire', redcap_record):
+
+        event = 'encounter_arm_1'
+        instrument = 'daily_attestation'
+        # Repeat instance number should be days since the start of the study,
+        # with the first instance starting at 1.
+        repeat_instance = 1 + (datetime.today() - STUDY_START_DATE).days
+
+        if repeat_instance <= 0:
+            # This should never happen!
+            app.logger.warning("Failed to create a valid repeat instance")
+            return ERROR_MESSAGE
+
+    # Generate a link to the appropriate questionnaire, and then redirect.
+    return redirect(generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance))
 
 
 # Always include a Cache-Control: no-store header in the response so browsers
