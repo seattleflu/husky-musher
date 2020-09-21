@@ -9,9 +9,9 @@ from id3c.cli.redcap import is_complete
 REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
 REDCAP_API_URL = os.environ['REDCAP_API_URL']
 ERROR_MESSAGE = """
-    Error: Something went wrong. Please contact Husky Coronavirus Testing support by
+    <p>Error: Something went wrong. Please contact Husky Coronavirus Testing support by
     emailing <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a> or by calling
-    <a href="tel:+12066162414">(206) 616-2414</a>.
+    <a href="tel:+12066162414">(206) 616-2414</a>.</p>
 """
 app = Flask(__name__)
 
