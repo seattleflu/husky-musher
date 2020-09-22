@@ -3,7 +3,7 @@ import json
 import requests
 from flask import Flask, redirect, request
 from typing import Dict, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from id3c.cli.redcap import is_complete
 
 
@@ -159,12 +159,19 @@ def main():
         instrument = 'daily_attestation'
         # Repeat instance number should be days since the start of the study,
         # with the first instance starting at 1.
-        repeat_instance = 1 + (datetime.today() - STUDY_START_DATE).days
+        repeat_instance = (datetime.today() - STUDY_START_DATE).days
 
-        if repeat_instance <= 0:
+        if repeat_instance < 0:
             # This should never happen!
-            app.logger.warning("Failed to create a valid repeat instance")
+            app.logger.error("Failed to create a valid repeat instance")
             return ERROR_MESSAGE
+
+        if repeat_instance == 0:
+            ### TODO: Update with new language about daily attestations start.
+            attestation_start = (STUDY_START_DATE + timedelta(days=1)).strftime("%B %d, %Y")
+            return ("Your enrollment is complete!\n" +
+                    f"Daily attestations start on {attestation_start}.\n" +
+                    "You will receive a daily reminder to complete your attestations.")
 
     # Generate a link to the appropriate questionnaire, and then redirect.
     return redirect(generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance))
