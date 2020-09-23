@@ -166,10 +166,7 @@ def extract_user_info(environ: dict) -> Dict[str, str]:
     Keys of the returned dict match those used by our REDCap project.
     """
     return {
-        # We ask in REDCap for their @uw.edu email address, so provide it in
-        # that same format.  On ingest from REDCap into ID3C, we normalize it
-        # anyway.
-        "netid": f"{environ['uid']}@uw.edu",
+        "netid": f"{environ['uid']}",
 
         # This won't always be @uw.edu.
         "email": environ.get("mail", ""),
