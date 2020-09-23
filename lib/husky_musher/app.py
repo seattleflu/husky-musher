@@ -133,8 +133,12 @@ def main():
 
     if redcap_record is None:
         # If not in REDCap project, create new record
-        new_record_id = register_participant(user_info)
-        redcap_record = { 'record_id': new_record_id }
+        try:
+            new_record_id = register_participant(user_info)
+            redcap_record = { 'record_id': new_record_id }
+        except Exception as e:
+            app.logger.warning(f'Failed to create new REDCap record: {e}')
+            return ERROR_MESSAGE
 
     # Because of REDCap's survey queue logic, we can point a participant to an
     # upstream survey. If they've completed it, REDCap will automatically direct
@@ -173,7 +177,14 @@ def main():
             """)
 
     # Generate a link to the appropriate questionnaire, and then redirect.
-    return redirect(generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance))
+    try:
+        survey_link = generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance)
+
+    except Exception as e:
+        app.logger.warning(f'Failed to generate REDCap survey link: {e}')
+        return ERROR_MESSAGE
+
+    return redirect(survey_link)
 
 
 # Always include a Cache-Control: no-store header in the response so browsers
