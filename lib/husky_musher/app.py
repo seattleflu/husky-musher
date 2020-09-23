@@ -16,27 +16,32 @@ ERROR_MESSAGE = """
 app = Flask(__name__)
 
 
-def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
+def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     """
-    Exports a REDCap record matching the given *net_id*. Returns None if no
+    Exports a REDCap record matching the given *user_info*. Returns None if no
     match is found.
 
     Raises an :class:`AssertionError` if REDCap returns multiple matches for the
-    given *net_id*.
+    given *user_info*.
     """
+    netid = user_info["netid"]
+
     fields = [
-        'netid', 'record_id', 'eligibility_screening_complete', 'consent_form_complete',
-        'enrollment_questionnaire_complete'
+        'netid',
+        'record_id',
+        'eligibility_screening_complete',
+        'consent_form_complete',
+        'enrollment_questionnaire_complete',
     ]
 
-    filter_logic = f'[netid] = "{net_id}"'
     data = {
         'token': REDCAP_API_TOKEN,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
         'csvDelimiter': '',
-        'filterLogic': filter_logic,
+        'filterLogic': f'[netid] = "{netid}"',
+        'fields': ",".join(map(str, fields)),
         'rawOrLabel': 'raw',
         'rawOrLabelHeaders': 'raw',
         'exportCheckboxLabel': 'false',
@@ -44,7 +49,6 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
         'exportDataAccessGroups': 'false',
         'returnFormat': 'json'
     }
-    data['fields'] = ",".join(map(str, fields))
 
     response = requests.post(REDCAP_API_URL, data=data)
     response.raise_for_status()
@@ -57,15 +61,16 @@ def fetch_user_data(net_id: str) -> Optional[Dict[str, str]]:
 
     return response.json()[0]
 
-def register_net_id(net_id: str) -> str:
+
+def register_participant(user_info: dict) -> Dict[str, str]:
     """
-    Returns the REDCap record ID of the participant newly registered under the
-    given *net_id*.
+    Returns a stub REDCap record of the participant newly registered with the
+    given *user_info*.
     """
     # REDCap enforces that we must provide a non-empty record ID. Because we're
     # using `forceAutoNumber` in the POST request, we do not need to provide a
     # real record ID.
-    values = [{'netid': net_id, 'record_id': 'record ID cannot be blank'}]
+    records = [{**user_info, 'record_id': 'record ID cannot be blank'}]
     data = {
         'token': REDCAP_API_TOKEN,
         'content': 'record',
@@ -73,7 +78,7 @@ def register_net_id(net_id: str) -> str:
         'type': 'flat',
         'overwriteBehavior': 'normal',
         'forceAutoNumber': 'true',
-        'data': json.dumps(values),
+        'data': json.dumps(records),
         'returnContent': 'ids',
         'returnFormat': 'json'
     }
@@ -103,45 +108,44 @@ def generate_survey_link(record_id: str) -> str:
 
 @app.route('/')
 def main():
-    # Get NetID from Shibboleth data
+    # Get NetID and other attributes from Shibboleth data
     remote_user = request.remote_user
-    net_id = request.environ.get("uid")
+    user_info = extract_user_info(request.environ)
 
     if not remote_user:
         # TODO for testing purposes only
         remote_user = 'KaasenG@washington.edu'
-        net_id = 'KaasenG'
 
-    if not (remote_user and net_id):
+    if not (remote_user and user_info.get("netid")):
         app.logger.error('No remote user!')
         return ERROR_MESSAGE
 
     try:
-        user_data = fetch_user_data(net_id)
+        redcap_record = fetch_participant(user_info)
 
     except Exception as e:
         app.logger.warning(f'Failed to fetch REDCap data: {e}')
         return ERROR_MESSAGE
 
-    if user_data is None:
+    if redcap_record is None:
         # If not in REDCap project, create new record
-        user_data = {'record_id': register_net_id(net_id)}
+        redcap_record = register_participant(user_info)
 
     # TODO -- generate a survey link for a particular day
     # We are awaiting finalization of the REDCap project to know how
     # daily attestations (repeating instruments) will be implemented.
-    if is_complete('eligibility_screening', user_data) and \
-        is_complete('consent_form', user_data) and \
-        is_complete('enrollment_questionnaire', user_data):
-        return f"Congrats, {net_id}, you're already registered under record ID " \
-            f"{user_data['record_id']} and your eligibility " \
+    if is_complete('eligibility_screening', redcap_record) and \
+        is_complete('consent_form', redcap_record) and \
+        is_complete('enrollment_questionnaire', redcap_record):
+        return f"Congrats, {remote_user}, you're already registered under record ID " \
+            f"{redcap_record['record_id']} and your eligibility " \
             "screening, consent form, and enrollment questionnaires are complete!"
 
     # Generate a link to the eligibility questionnaire, and then redirect.
     # Because of REDCap's survey queue logic, we can point a participant to an
     # upstream survey. If they've completed it, REDCap will automatically direct
     # them to the next, uncompleted survey in the queue.
-    return redirect(generate_survey_link(user_data['record_id']))
+    return redirect(generate_survey_link(redcap_record['record_id']))
 
 
 # Always include a Cache-Control: no-store header in the response so browsers
@@ -152,3 +156,77 @@ def main():
 def set_cache_control(response):
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+def extract_user_info(environ: dict) -> Dict[str, str]:
+    """
+    Extracts attributes of the authenticated user, provided by UW's IdP via our
+    Shibboleth SP, from the request environment *environ*.
+
+    Keys of the returned dict match those used by our REDCap project.
+    """
+    return {
+        "netid": f"{environ['uid']}",
+
+        # This won't always be @uw.edu.
+        "email": environ.get("mail", ""),
+
+        # Given name will include any middle initial/name.  Both name fields
+        # will contain the preferred name parts, if set, otherwise the
+        # administrative name parts.
+        "core_participant_first_name": environ.get("givenName", ""),
+        "core_participant_last_name":  environ.get("surname", ""),
+
+        # Department is generally a colon-separated set of
+        # increasingly-specific labels, starting with the School.
+        "uw_school": environ.get("department", ""),
+
+        **extract_affiliation(environ),
+    }
+
+
+def extract_affiliation(environ: dict) -> Dict[str, str]:
+    """
+    Transforms a multi-value affiliation string into our REDCap fields.
+
+    Keys of the returned dict match those used by our REDCap project.
+
+    >>> extract_affiliation({"unscoped-affiliation": "member;faculty;employee;alum"})
+    {'affiliation': 'faculty', 'affiliation_other': ''}
+
+    >>> extract_affiliation({"unscoped-affiliation": "member;student;staff"})
+    {'affiliation': 'student', 'affiliation_other': ''}
+
+    >>> extract_affiliation({"unscoped-affiliation": "member;faculty;student"})
+    {'affiliation': 'student', 'affiliation_other': ''}
+
+    >>> extract_affiliation({"unscoped-affiliation": "member;staff;alum"})
+    {'affiliation': 'staff', 'affiliation_other': ''}
+
+    >>> extract_affiliation({"unscoped-affiliation": "member;employee"})
+    {'affiliation': 'staff', 'affiliation_other': ''}
+
+    >>> extract_affiliation({"unscoped-affiliation": "member;affiliate;alum"})
+    {'affiliation': 'other', 'affiliation_other': 'affiliate;alum'}
+
+    >>> extract_affiliation({"unscoped-affiliation": "member"})
+    {'affiliation': '', 'affiliation_other': ''}
+
+    >>> extract_affiliation({})
+    {'affiliation': '', 'affiliation_other': ''}
+    """
+    raw_affilations = environ.get("unscoped-affiliation", "")
+
+    # "Member" is uninteresting and uninformative; a generic catch-all.
+    # The empty string might arise from our fallback above.
+    affiliations = set(raw_affilations.split(";")) - {"member",""}
+
+    rules = [
+        ("student"  in affiliations,    {"affiliation": "student",  "affiliation_other": ""}),
+        ("faculty"  in affiliations,    {"affiliation": "faculty",  "affiliation_other": ""}),
+        ("staff"    in affiliations,    {"affiliation": "staff",    "affiliation_other": ""}),
+        ("employee" in affiliations,    {"affiliation": "staff",    "affiliation_other": ""}),
+        (len(affiliations) > 0,         {"affiliation": "other",    "affiliation_other": ";".join(sorted(affiliations))}),
+        (True,                          {"affiliation": "",         "affiliation_other": ""})]
+
+    return next(result for condition, result in rules if condition)
