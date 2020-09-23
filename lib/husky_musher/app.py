@@ -166,7 +166,7 @@ def extract_user_info(environ: dict) -> Dict[str, str]:
     Keys of the returned dict match those used by our REDCap project.
     """
     return {
-        "netid": f"{environ['uid']}",
+        "netid": environ['uid'],
 
         # This won't always be @uw.edu.
         "email": environ.get("mail", ""),
