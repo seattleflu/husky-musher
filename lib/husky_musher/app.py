@@ -62,10 +62,10 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     return response.json()[0]
 
 
-def register_participant(user_info: dict) -> Dict[str, str]:
+def register_participant(user_info: dict) -> str:
     """
-    Returns a stub REDCap record of the participant newly registered with the
-    given *user_info*.
+    Returns the REDCap record ID of the participant newly registered with the
+    given *user_info*
     """
     # REDCap enforces that we must provide a non-empty record ID. Because we're
     # using `forceAutoNumber` in the POST request, we do not need to provide a
@@ -129,7 +129,8 @@ def main():
 
     if redcap_record is None:
         # If not in REDCap project, create new record
-        redcap_record = register_participant(user_info)
+        new_record_id = register_participant(user_info)
+        redcap_record = { 'record_id': new_record_id }
 
     # TODO -- generate a survey link for a particular day
     # We are awaiting finalization of the REDCap project to know how
