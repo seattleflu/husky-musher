@@ -56,7 +56,7 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     if len(response.json()) == 0:
         return None
 
-    assert len(response.json()) == 1, "Multiple records exist with same record ID: " \
+    assert len(response.json()) == 1, "Multiple records exist with same NetID: " \
         f"{[ record['record_id'] for record in response.json() ]}"
 
     return response.json()[0]
