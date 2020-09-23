@@ -120,10 +120,6 @@ def main():
     remote_user = request.remote_user
     user_info = extract_user_info(request.environ)
 
-    if not remote_user:
-        # TODO for testing purposes only
-        remote_user = 'KaasenG@washington.edu'
-
     if not (remote_user and user_info.get("netid")):
         app.logger.error('No remote user!')
         return ERROR_MESSAGE
