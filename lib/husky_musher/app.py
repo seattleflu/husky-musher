@@ -163,11 +163,14 @@ def main():
             return ERROR_MESSAGE
 
         if repeat_instance == 0:
-            ### TODO: Update with new language about daily attestations start.
             attestation_start = (STUDY_START_DATE + timedelta(days=1)).strftime("%B %d, %Y")
-            return ("Your enrollment is complete!\n" +
-                    f"Daily attestations start on {attestation_start}.\n" +
-                    "You will receive a daily reminder to complete your attestations.")
+            return (f"""
+                <p>Thank you for enrolling in Husky Coronavirus Testing!<br><br>
+                Daily Check-ins start on {attestation_start}.<br>
+                You will receive a daily reminder to complete your check-in via text or email.<br><br>
+                If you have any questions or concerns, please reach out to us at:
+                <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a></p>
+            """)
 
     # Generate a link to the appropriate questionnaire, and then redirect.
     return redirect(generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance))
