@@ -197,6 +197,9 @@ def extract_affiliation(environ: dict) -> Dict[str, str]:
     >>> extract_affiliation({"unscoped-affiliation": "member;student;staff"})
     {'affiliation': 'student', 'affiliation_other': ''}
 
+    >>> extract_affiliation({"unscoped-affiliation": "member;faculty;student"})
+    {'affiliation': 'student', 'affiliation_other': ''}
+
     >>> extract_affiliation({"unscoped-affiliation": "member;staff;alum"})
     {'affiliation': 'staff', 'affiliation_other': ''}
 
@@ -219,8 +222,8 @@ def extract_affiliation(environ: dict) -> Dict[str, str]:
     affiliations = set(raw_affilations.split(";")) - {"member",""}
 
     rules = [
-        ("faculty"  in affiliations,    {"affiliation": "faculty",  "affiliation_other": ""}),
         ("student"  in affiliations,    {"affiliation": "student",  "affiliation_other": ""}),
+        ("faculty"  in affiliations,    {"affiliation": "faculty",  "affiliation_other": ""}),
         ("staff"    in affiliations,    {"affiliation": "staff",    "affiliation_other": ""}),
         ("employee" in affiliations,    {"affiliation": "staff",    "affiliation_other": ""}),
         (len(affiliations) > 0,         {"affiliation": "other",    "affiliation_other": ";".join(sorted(affiliations))}),
