@@ -159,14 +159,14 @@ def main():
         instrument = 'daily_attestation'
         # Repeat instance number should be days since the start of the study,
         # with the first instance starting at 1.
-        repeat_instance = (datetime.today() - STUDY_START_DATE).days
+        repeat_instance = 1 + (datetime.today() - STUDY_START_DATE).days
 
-        if repeat_instance < 0:
+        if repeat_instance <= 0:
             # This should never happen!
             app.logger.error("Failed to create a valid repeat instance")
             return ERROR_MESSAGE
 
-        if repeat_instance == 0:
+        if repeat_instance == 1:
             attestation_start = (STUDY_START_DATE + timedelta(days=1)).strftime("%B %d, %Y")
             return (f"""
                 <p>Thank you for enrolling in Husky Coronavirus Testing!<br><br>
