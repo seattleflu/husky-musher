@@ -3,15 +3,17 @@ import json
 import requests
 from flask import Flask, redirect, request
 from typing import Dict, Optional
+from datetime import datetime, timedelta
 from id3c.cli.redcap import is_complete
 
 
 REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
 REDCAP_API_URL = os.environ['REDCAP_API_URL']
+STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
 ERROR_MESSAGE = """
-    Error: Something went wrong. Please contact Husky Coronavirus Testing support by
+    <p>Error: Something went wrong. Please contact Husky Coronavirus Testing support by
     emailing <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a> or by calling
-    <a href="tel:+12066162414">(206) 616-2414</a>.
+    <a href="tel:+12066162414">(206) 616-2414</a>.</p>
 """
 app = Flask(__name__)
 
@@ -87,20 +89,26 @@ def register_participant(user_info: dict) -> str:
     return response.json()[0]
 
 
-def generate_survey_link(record_id: str) -> str:
+def generate_survey_link(record_id: str, event: str, instrument: str, instance: int = None) -> str:
     """
-    Returns a generated survey link to the eligibility screening instrument for
-    the given *record_id*.
+    Returns a generated survey link for the given *instrument* within the
+    *event* of the *record_id*.
+
+    Will include the repeat *instance* if provided.
     """
     data = {
         'token': REDCAP_API_TOKEN,
         'content': 'surveyLink',
         'format': 'json',
-        'instrument': 'eligibility_screening',
-        'event': 'enrollment_arm_1',  # TODO subject to change
+        'instrument': instrument,
+        'event': event,
         'record': record_id,
         'returnFormat': 'json'
     }
+
+    if instance:
+        data['repeat_instance'] = str(instance)
+
     response = requests.post(REDCAP_API_URL, data=data)
     response.raise_for_status()
     return response.text
@@ -111,10 +119,6 @@ def main():
     # Get NetID and other attributes from Shibboleth data
     remote_user = request.remote_user
     user_info = extract_user_info(request.environ)
-
-    if not remote_user:
-        # TODO for testing purposes only
-        remote_user = 'KaasenG@washington.edu'
 
     if not (remote_user and user_info.get("netid")):
         app.logger.error('No remote user!')
@@ -129,24 +133,58 @@ def main():
 
     if redcap_record is None:
         # If not in REDCap project, create new record
-        new_record_id = register_participant(user_info)
-        redcap_record = { 'record_id': new_record_id }
+        try:
+            new_record_id = register_participant(user_info)
+            redcap_record = { 'record_id': new_record_id }
+        except Exception as e:
+            app.logger.warning(f'Failed to create new REDCap record: {e}')
+            return ERROR_MESSAGE
 
-    # TODO -- generate a survey link for a particular day
-    # We are awaiting finalization of the REDCap project to know how
-    # daily attestations (repeating instruments) will be implemented.
-    if is_complete('eligibility_screening', redcap_record) and \
-        is_complete('consent_form', redcap_record) and \
-        is_complete('enrollment_questionnaire', redcap_record):
-        return f"Congrats, {remote_user}, you're already registered under record ID " \
-            f"{redcap_record['record_id']} and your eligibility " \
-            "screening, consent form, and enrollment questionnaires are complete!"
-
-    # Generate a link to the eligibility questionnaire, and then redirect.
     # Because of REDCap's survey queue logic, we can point a participant to an
     # upstream survey. If they've completed it, REDCap will automatically direct
     # them to the next, uncompleted survey in the queue.
-    return redirect(generate_survey_link(redcap_record['record_id']))
+    event = 'enrollment_arm_1'
+    instrument = 'eligibility_screening'
+    repeat_instance = None
+
+    # If all enrollment event instruments are complete, point participants
+    # to today's daily attestation instrument.
+    # If the participant has already completed the daily attestation,
+    # REDCap will prevent the participant from filling out the survey again.
+    if is_complete('eligibility_screening', redcap_record) and \
+        is_complete('consent_form', redcap_record) and \
+        is_complete('enrollment_questionnaire', redcap_record):
+
+        event = 'encounter_arm_1'
+        instrument = 'daily_attestation'
+        # Repeat instance number should be days since the start of the study,
+        # with the first instance starting at 1.
+        repeat_instance = 1 + (datetime.today() - STUDY_START_DATE).days
+
+        if repeat_instance <= 0:
+            # This should never happen!
+            app.logger.error("Failed to create a valid repeat instance")
+            return ERROR_MESSAGE
+
+        if repeat_instance == 1:
+            attestation_start = (STUDY_START_DATE + timedelta(days=1)).strftime("%B %d, %Y")
+            return (f"""
+                <p>Thank you for enrolling in Husky Coronavirus Testing!<br><br>
+                Daily Check-ins start on {attestation_start}.<br>
+                You will receive a daily reminder to complete your check-in via text or email.<br><br>
+                If you have any questions or concerns, please reach out to us at:
+                <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a></p>
+            """)
+
+    # Generate a link to the appropriate questionnaire, and then redirect.
+    try:
+        survey_link = generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance)
+
+    except Exception as e:
+        app.logger.warning(f'Failed to generate REDCap survey link: {e}')
+        return ERROR_MESSAGE
+
+    return redirect(survey_link)
 
 
 # Always include a Cache-Control: no-store header in the response so browsers
