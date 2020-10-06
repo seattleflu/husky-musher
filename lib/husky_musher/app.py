@@ -1,118 +1,16 @@
-import os
 import json
-import requests
 from flask import Flask, redirect, request
-from typing import Dict, Optional
-from datetime import datetime, timedelta
 from id3c.cli.redcap import is_complete
 from .utils.shibboleth import *
+from .utils.redcap import *
 
 
-REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
-REDCAP_API_URL = os.environ['REDCAP_API_URL']
-STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
 ERROR_MESSAGE = """
     <p>Error: Something went wrong. Please contact Husky Coronavirus Testing support by
     emailing <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a> or by calling
     <a href="tel:+12066162414">(206) 616-2414</a>.</p>
 """
 app = Flask(__name__)
-
-
-def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
-    """
-    Exports a REDCap record matching the given *user_info*. Returns None if no
-    match is found.
-
-    Raises an :class:`AssertionError` if REDCap returns multiple matches for the
-    given *user_info*.
-    """
-    netid = user_info["netid"]
-
-    fields = [
-        'netid',
-        'record_id',
-        'eligibility_screening_complete',
-        'consent_form_complete',
-        'enrollment_questionnaire_complete',
-    ]
-
-    data = {
-        'token': REDCAP_API_TOKEN,
-        'content': 'record',
-        'format': 'json',
-        'type': 'flat',
-        'csvDelimiter': '',
-        'filterLogic': f'[netid] = "{netid}"',
-        'fields': ",".join(map(str, fields)),
-        'rawOrLabel': 'raw',
-        'rawOrLabelHeaders': 'raw',
-        'exportCheckboxLabel': 'false',
-        'exportSurveyFields': 'false',
-        'exportDataAccessGroups': 'false',
-        'returnFormat': 'json'
-    }
-
-    response = requests.post(REDCAP_API_URL, data=data)
-    response.raise_for_status()
-
-    if len(response.json()) == 0:
-        return None
-
-    assert len(response.json()) == 1, "Multiple records exist with same NetID: " \
-        f"{[ record['record_id'] for record in response.json() ]}"
-
-    return response.json()[0]
-
-
-def register_participant(user_info: dict) -> str:
-    """
-    Returns the REDCap record ID of the participant newly registered with the
-    given *user_info*
-    """
-    # REDCap enforces that we must provide a non-empty record ID. Because we're
-    # using `forceAutoNumber` in the POST request, we do not need to provide a
-    # real record ID.
-    records = [{**user_info, 'record_id': 'record ID cannot be blank'}]
-    data = {
-        'token': REDCAP_API_TOKEN,
-        'content': 'record',
-        'format': 'json',
-        'type': 'flat',
-        'overwriteBehavior': 'normal',
-        'forceAutoNumber': 'true',
-        'data': json.dumps(records),
-        'returnContent': 'ids',
-        'returnFormat': 'json'
-    }
-    response = requests.post(REDCAP_API_URL, data=data)
-    response.raise_for_status()
-    return response.json()[0]
-
-
-def generate_survey_link(record_id: str, event: str, instrument: str, instance: int = None) -> str:
-    """
-    Returns a generated survey link for the given *instrument* within the
-    *event* of the *record_id*.
-
-    Will include the repeat *instance* if provided.
-    """
-    data = {
-        'token': REDCAP_API_TOKEN,
-        'content': 'surveyLink',
-        'format': 'json',
-        'instrument': instrument,
-        'event': event,
-        'record': record_id,
-        'returnFormat': 'json'
-    }
-
-    if instance:
-        data['repeat_instance'] = str(instance)
-
-    response = requests.post(REDCAP_API_URL, data=data)
-    response.raise_for_status()
-    return response.text
 
 
 # Always include a Cache-Control: no-store header in the response so browsers
@@ -168,8 +66,6 @@ def main():
 
         event = 'encounter_arm_1'
         instrument = 'daily_attestation'
-        # Repeat instance number should be days since the start of the study,
-        # with the first instance starting at 1.
         repeat_instance = get_todays_repeat_instance()
 
         if repeat_instance <= 0:
@@ -178,7 +74,6 @@ def main():
             return ERROR_MESSAGE
 
         if repeat_instance == 1:
-            attestation_start = (STUDY_START_DATE + timedelta(days=1)).strftime("%B %d, %Y")
             return (f"""
                 <p>Thank you for enrolling in Husky Coronavirus Testing!<br><br>
                 Daily Check-ins start on {attestation_start}.<br>
@@ -196,11 +91,3 @@ def main():
         return ERROR_MESSAGE
 
     return redirect(survey_link)
-
-
-def get_todays_repeat_instance() -> int:
-    """
-    Returns the repeat instance number, i.e. days since the start of the study
-    with the first instance starting at 1.
-    """
-    return 1 + (datetime.today() - STUDY_START_DATE).days
