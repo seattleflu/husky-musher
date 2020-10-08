@@ -170,7 +170,7 @@ def main():
         instrument = 'daily_attestation'
         # Repeat instance number should be days since the start of the study,
         # with the first instance starting at 1.
-        repeat_instance = 1 + (datetime.today() - STUDY_START_DATE).days
+        repeat_instance = get_todays_repeat_instance()
 
         if repeat_instance <= 0:
             # This should never happen!
@@ -196,3 +196,11 @@ def main():
         return ERROR_MESSAGE
 
     return redirect(survey_link)
+
+
+def get_todays_repeat_instance() -> int:
+    """
+    Returns the repeat instance number, i.e. days since the start of the study
+    with the first instance starting at 1.
+    """
+    return 1 + (datetime.today() - STUDY_START_DATE).days
