@@ -1,14 +1,10 @@
 import json
-from flask import Flask, redirect, request
+from flask import Flask, redirect, render_template, request
+from werkzeug.exceptions import HTTPException, InternalServerError
 from .utils.shibboleth import *
 from .utils.redcap import *
 
 
-ERROR_MESSAGE = """
-    <p>Error: Something went wrong. Please contact Husky Coronavirus Testing support by
-    emailing <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a> or by calling
-    <a href="tel:+12066162414">(206) 616-2414</a>.</p>
-"""
 app = Flask(__name__)
 
 
@@ -21,6 +17,19 @@ def set_cache_control(response):
     response.headers["Cache-Control"] = "no-store"
     return response
 
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('page_not_found.html'), 404
+
+@app.errorhandler(HTTPException)
+def handle_http_error(error):
+    app.logger.warning(f'POST to REDCap API failed: {error}')
+    return render_template('something_went_wrong.html'), error.code
+
+@app.errorhandler(InternalServerError)
+def handle_500_error(error):
+    app.logger.warning(f'Unexpected error occurred: {error}')
+    return render_template('something_went_wrong.html'), 500
 
 @app.route('/')
 def main():
@@ -30,23 +39,14 @@ def main():
 
     if not (remote_user and user_info.get("netid")):
         app.logger.error('No remote user!')
-        return ERROR_MESSAGE
+        raise
 
-    try:
-        redcap_record = fetch_participant(user_info)
-
-    except Exception as e:
-        app.logger.warning(f'Failed to fetch REDCap data: {e}')
-        return ERROR_MESSAGE
+    redcap_record = fetch_participant(user_info)
 
     if redcap_record is None:
         # If not in REDCap project, create new record
-        try:
-            new_record_id = register_participant(user_info)
-            redcap_record = { 'record_id': new_record_id }
-        except Exception as e:
-            app.logger.warning(f'Failed to create new REDCap record: {e}')
-            return ERROR_MESSAGE
+        new_record_id = register_participant(user_info)
+        redcap_record = { 'record_id': new_record_id }
 
     # Because of REDCap's survey queue logic, we can point a participant to an
     # upstream survey. If they've completed it, REDCap will automatically direct
@@ -67,7 +67,7 @@ def main():
         if repeat_instance <= 0:
             # This should never happen!
             app.logger.error("Failed to create a valid repeat instance")
-            return ERROR_MESSAGE
+            raise
 
         if repeat_instance == 1:
             return (f"""
@@ -79,11 +79,5 @@ def main():
             """)
 
     # Generate a link to the appropriate questionnaire, and then redirect.
-    try:
-        survey_link = generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance)
-
-    except Exception as e:
-        app.logger.warning(f'Failed to generate REDCap survey link: {e}')
-        return ERROR_MESSAGE
-
+    survey_link = generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance)
     return redirect(survey_link)
