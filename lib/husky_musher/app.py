@@ -1,6 +1,5 @@
 import json
 from flask import Flask, redirect, request
-from id3c.cli.redcap import is_complete
 from .utils.shibboleth import *
 from .utils.redcap import *
 
@@ -60,10 +59,7 @@ def main():
     # to today's daily attestation instrument.
     # If the participant has already completed the daily attestation,
     # REDCap will prevent the participant from filling out the survey again.
-    if is_complete('eligibility_screening', redcap_record) and \
-        is_complete('consent_form', redcap_record) and \
-        is_complete('enrollment_questionnaire', redcap_record):
-
+    if redcap_registration_complete(redcap_record):
         event = 'encounter_arm_1'
         instrument = 'daily_attestation'
         repeat_instance = get_todays_repeat_instance()

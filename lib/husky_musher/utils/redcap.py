@@ -4,6 +4,7 @@ import requests
 from flask import request
 from datetime import datetime, timedelta
 from typing import Dict, Optional
+from id3c.cli.redcap import is_complete
 
 
 REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
@@ -115,3 +116,40 @@ def get_todays_repeat_instance() -> int:
     with the first instance starting at 1.
     """
     return 1 + (datetime.today() - STUDY_START_DATE).days
+
+
+def redcap_registration_complete(redcap_record: dict) -> bool:
+    """
+    Returns True if a given *redcap_record* shows a participant has completed
+    the enrollment surveys. Otherwise, returns False.
+
+    >>> redcap_registration_complete(None)
+    False
+
+    >>> redcap_registration_complete({})
+    False
+
+    >>> redcap_registration_complete({ \
+        'eligibility_screening_complete': '1', \
+        'consent_form_complete': '2', \
+        'enrollment_questionnaire_complete': '0'})
+    False
+
+    >>> redcap_registration_complete({ \
+        'eligibility_screening_complete': '2', \
+        'consent_form_complete': '2', \
+        'enrollment_questionnaire_complete': '1'})
+    False
+
+    >>> redcap_registration_complete({ \
+        'eligibility_screening_complete': '2', \
+        'consent_form_complete': '2', \
+        'enrollment_questionnaire_complete': '2'})
+    True
+    """
+    if not redcap_record:
+        return False
+
+    return (is_complete('eligibility_screening', redcap_record) and \
+            is_complete('consent_form', redcap_record) and \
+            is_complete('enrollment_questionnaire', redcap_record))
