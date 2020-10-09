@@ -2,6 +2,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}{% endblock %} - Kiosk Flow</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<nav>
+  <a href={{ url_for('.kiosk') }}>kiosk flow</a>
+</nav>
 <header>
   <h1>
     Husky Coronavirus Testing

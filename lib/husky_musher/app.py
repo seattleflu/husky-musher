@@ -1,5 +1,17 @@
+"""
+Automates the survey flow and logic for when a participant walks up to a kiosk
+for an observed nasal swab.
+
+Glossary:
+=========
+PT = participant
+TD = Testing Determination instrument
+TOS = Test Order Survey insrument
+KR = Kiosk Registration instrument
+"""
+import re
 import json
-from flask import Flask, redirect, render_template, request
+from flask import Flask, redirect, render_template, request, url_for
 from werkzeug.exceptions import HTTPException, InternalServerError
 from .utils.shibboleth import *
 from .utils.redcap import *
@@ -81,3 +93,47 @@ def main():
     # Generate a link to the appropriate questionnaire, and then redirect.
     survey_link = generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance)
     return redirect(survey_link)
+
+
+@app.route('/kiosk')
+def kiosk():
+    return render_template('kiosk.html')
+
+@app.route('/kiosk/lookup', methods=['GET'])
+def redirect_to_kiosk():
+    return redirect(url_for('.kiosk'))
+
+@app.route('/kiosk/lookup', methods=['POST'])
+def lookup():
+    # Sanitize inputs
+    netid = re.sub('\W', '', request.form['netid'])
+    redcap_record = fetch_participant({ 'netid': netid })
+
+    # Check if PT is already reigstered
+    registration_complete = redcap_registration_complete(redcap_record)
+    if not registration_complete:
+        # Give PT info on how to register
+        return render_template('registration_required.html', netid=netid,
+            redcap_record_exists=redcap_record is not None,
+            registration_complete=registration_complete)
+
+    # Fetch all encounter events in the past 7 days.
+    recent_encounters = fetch_encounter_events_past_week(redcap_record)
+
+    # Track noteworthy instances used in survey generation logic
+    instances: Dict[str, int] = dict()
+
+    # Look for most recent TD with testing_trigger = 'Yes'
+    instances['target'] = max_instance_testing_triggered(recent_encounters)
+    # Check if TOS exists and is marked complete on or after this instance.
+    instances['complete_tos'] = max_instance('test_order_survey', recent_encounters)
+    # Check for KRs on or after this instance.
+    instances['complete_kr'] = max_instance('kiosk_registration_4c7f', recent_encounters)
+    instances['incomplete_kr'] = max_instance('kiosk_registration_4c7f', recent_encounters,
+        complete=False)
+
+    if instances['complete_tos'] == get_todays_repeat_instance():
+        # We won't test this PT twice in one day
+        return render_template('test_already_sent.html', netid=netid)
+
+    return redirect(kiosk_registration_link(redcap_record, instances))

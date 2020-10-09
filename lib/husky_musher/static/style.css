@@ -22,3 +22,25 @@ section {
   width: 90%;
   margin: 0 auto;
 }
+
+form {
+  display: grid;
+  place-items: center;
+}
+
+button {
+  background-color: #4b2e83;
+  border: 1px solid #000;
+  border-radius: 5px;
+  width: 100%;
+  color: white;
+  font-size: 1.8em;
+  font-weight: 500;
+  padding: 0.2em;
+}
+
+#netid {
+  max-width: 20rem;
+  text-align: center;
+  font-size: 2rem;
+}

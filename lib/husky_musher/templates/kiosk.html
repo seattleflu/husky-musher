@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>{% block title %}Look up a NetID{% endblock %}</h2>
+<form action={{ url_for('.lookup') }} method="post">
+  <input type="search"
+    id="netid"
+    name="netid"
+    required
+    placeholder="Enter a UW NetID..."
+    autocomplete="off"
+    autofocus >
+  <button type="submit">Go</button>
+</form>
+{% endblock %}
