@@ -327,11 +327,7 @@ def _max_instance(redcap_record: List[dict]) -> int:
         raise ValueError("Expected non-empty *redcap_record*")
 
     try:
-        max_instance = int(redcap_record[0]['redcap_repeat_instance'])
-
-        for i in range(1, len(redcap_record)):
-            instance_number = int(redcap_record[i]['redcap_repeat_instance'])
-            max_instance = max(max_instance, instance_number)
+        max_instance = max(int(event['redcap_repeat_instance']) for event in redcap_record)
 
     except KeyError:
         raise KeyError("Expected every event in the given *redcap_record* to contain a "
