@@ -263,14 +263,17 @@ def max_instance(instrument: str, redcap_record: List[dict], since: int,
         since=3)
 
     >>> max_instance('test_order_survey', [ \
-        {'redcap_repeat_instance': '1', 'test_order_survey_complete': '1'}, \
-        {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '2'}], \
+        {'redcap_repeat_instance': '1', 'test_order_survey_complete': '1', \
+            'kiosk_registration_4c7f_complete': ''}, \
+        {'redcap_repeat_instance': '2', 'test_order_survey_complete': '', \
+            'kiosk_registration_4c7f_complete': '2'}], \
         since=0)
     """
     events_instrument_complete = [
         encounter
         for encounter in redcap_record
         if int(encounter['redcap_repeat_instance']) >= since
+        and encounter[f"{instrument}_complete"] != ''
         and is_complete(instrument, encounter) == complete
     ]
 
