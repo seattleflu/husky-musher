@@ -166,7 +166,11 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     """
     # Unfortunately, despite its appearance in the returned response from REDCap,
     # `redcap_repeat_instance` is not a field we can query by when exporting
-    # REDCap records. Thus, return all information from a REDCap record (without
+    # REDCap records. Additionally, the `dateRangeBegin` key in REDCap is not
+    # useful to us, because all instances associated with a record are returned,
+    # regardless of the instance's creation or modification date.
+    #
+    # Thus, return all information from a REDCap record (without
     # specifying fields) to retrieve the instance key.
     data = {
         'token': REDCAP_API_TOKEN,
