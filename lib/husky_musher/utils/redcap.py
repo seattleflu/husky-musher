@@ -251,7 +251,7 @@ def max_instance(instrument: str, redcap_record: List[dict], since: int,
         encounter
         for encounter in redcap_record
         if int(encounter['redcap_repeat_instance']) >= since
-        and is_complete(instrument, encounter)
+        and is_complete(instrument, encounter) == complete
     ]
 
     if not events_instrument_complete:
