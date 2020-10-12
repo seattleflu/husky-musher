@@ -1,14 +1,3 @@
-"""
-Automates the survey flow and logic for when a participant walks up to a kiosk
-for an observed nasal swab.
-
-Glossary:
-=========
-PT = participant
-TD = Testing Determination instrument
-TOS = Test Order Survey insrument
-KR = Kiosk Registration instrument
-"""
 import re
 import json
 from flask import Flask, redirect, render_template, request, url_for
@@ -105,6 +94,17 @@ def redirect_to_kiosk():
 
 @app.route('/kiosk/lookup', methods=['POST'])
 def lookup():
+    """
+    Automates the survey flow and logic for when a participant walks up to a
+    kiosk for an observed nasal swab.
+
+    Glossary:
+    =========
+    PT = participant
+    TD = Testing Determination instrument
+    TOS = Test Order Survey insrument
+    KR = Kiosk Registration instrument
+    """
     # Sanitize inputs
     netid = re.sub('\W', '', request.form['netid'])
     redcap_record = fetch_participant({ 'netid': netid })
