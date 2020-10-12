@@ -13,3 +13,10 @@ See Pipfile for required libraries.
 The required environment variables are:
 * `REDCAP_API_URL`
 * `REDCAP_API_TOKEN`
+
+
+## Tests
+Run doctests on the utils functions with:
+```sh
+pipenv run python3 -m doctest lib/husky_musher/utils/*
+```
