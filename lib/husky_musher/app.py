@@ -70,15 +70,6 @@ def main():
             app.logger.error("Failed to create a valid repeat instance")
             raise
 
-        if repeat_instance == 1:
-            return (f"""
-                <p>Thank you for enrolling in Husky Coronavirus Testing!<br><br>
-                Daily Check-ins start on {attestation_start}.<br>
-                You will receive a daily reminder to complete your check-in via text or email.<br><br>
-                If you have any questions or concerns, please reach out to us at:
-                <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a></p>
-            """)
-
     # Generate a link to the appropriate questionnaire, and then redirect.
     survey_link = generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance)
     return redirect(survey_link)

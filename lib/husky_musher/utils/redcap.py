@@ -17,8 +17,6 @@ YES = '1'
 KIOSK_WALK_IN = '4'
 COMPLETE = '2'
 
-attestation_start = (STUDY_START_DATE + timedelta(days=1)).strftime("%B %d, %Y")
-
 
 def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     """
