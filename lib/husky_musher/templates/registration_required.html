@@ -2,24 +2,18 @@
 
 {% block content %}
 <h2>{% block title %}Registration Required{% endblock %}</h2>
-{% if not registration_complete %}
-    {% if not redcap_record_exists %}
-        <p>
-            <b>{{ netid }}</b> has not signed up!
-        </p>
-    {% elif not registration_complete %}
-        <p>
-            <b>{{ netid }}</b> has not finished signing up for Husky Coronavirus Testing!
-        </p>
-    {% endif %}
+{% if not redcap_record_exists %}
     <p>
-        Please visit <a href="http://seattleflu.org/uw/start">http://seattleflu.org/uw/start</a>
-        to sign up.
+        <b>{{ netid }}</b> has not signed up!
     </p>
-{% else %}
+{% elif not registration_complete %}
     <p>
-        <b>{{ netid }}</b> is enrolled.
+        <b>{{ netid }}</b> has not finished signing up for Husky Coronavirus Testing!
     </p>
 {% endif %}
+<p>
+    Please visit <a href="http://seattleflu.org/uw/start">http://seattleflu.org/uw/start</a>
+    to sign up.
+</p>
 
 {% endblock %}
