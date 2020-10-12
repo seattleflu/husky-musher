@@ -136,6 +136,6 @@ def lookup():
 
     if instances['complete_tos'] == get_todays_repeat_instance():
         # We won't test this PT twice in one day
-        return render_template('test_already_sent.html', netid=netid)
+        return render_template('test_already_ordered.html', netid=netid)
 
     return redirect(kiosk_registration_link(redcap_record, instances))
