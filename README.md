@@ -20,3 +20,8 @@ Run doctests on the utils functions with:
 ```sh
 pipenv run python3 -m doctest lib/husky_musher/utils/*
 ```
+
+Run unit tests with:
+```sh
+pipenv run python -m unittest lib/husky_musher/tests/*
+```
