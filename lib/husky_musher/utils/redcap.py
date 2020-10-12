@@ -446,10 +446,10 @@ def need_to_create_new_kr_instance(instances: Dict[str, int]) -> bool:
     these conditions assume a TD instance with [testing_trigger] = "Yes" exists
     in the past 7 days.
         1. No complete TOS instance exists on or after the target TD instance,
-           and no complete KR instance exists on or after the target TD instance.
+           and no KR instance exists on or after the target TD instance.
         2. A complete TOS instance exists on or after the target TD instance,
-           the TOS instance is not from today, and no complete KR instance
-           exists on or after the target TD instance.
+           the TOS instance is not from today, and no KR instance exists on or
+           after the target TD instance.
 
     *target_instance* is a TD instance number with [testing_trigger] = "Yes" in the
     past 7 days.
@@ -460,40 +460,45 @@ def need_to_create_new_kr_instance(instances: Dict[str, int]) -> bool:
     *complete_kr_instance* is a KR instance number marked complete on or after the
     given *target_intance*.
 
-    >>> need_to_create_new_kr_instance({'target': None, 'complete_tos': 1, 'complete_kr': 1})
+    >>> need_to_create_new_kr_instance({'target': None, 'complete_tos': 1, 'complete_kr': 1, 'incomplete_kr': None})
     False
 
-    >>> need_to_create_new_kr_instance({'target': 1, 'complete_tos': None, 'complete_kr': 1})
+    >>> need_to_create_new_kr_instance({'target': 1, 'complete_tos': None, 'complete_kr': 1, 'incomplete_kr': None})
     False
 
-    >>> need_to_create_new_kr_instance({'target': 1, 'complete_tos': 1, 'complete_kr': 1})
+    >>> need_to_create_new_kr_instance({'target': 1, 'complete_tos': 1, 'complete_kr': 1, 'incomplete_kr': None})
     False
 
-    >>> need_to_create_new_kr_instance({'target': 1, 'complete_tos': None, 'complete_kr': None})
+    >>> need_to_create_new_kr_instance({'target': 1, 'complete_tos': None, 'complete_kr': None, 'incomplete_kr': None})
     True
 
-    >>> need_to_create_new_kr_instance({'target': 1, 'complete_tos': None, 'complete_kr': 1})
+    >>> need_to_create_new_kr_instance({'target': 1, 'complete_tos': None, 'complete_kr': None, 'incomplete_kr': 2})
+    False
+
+    >>> need_to_create_new_kr_instance({'target': 1, 'complete_tos': None, 'complete_kr': 1, 'incomplete_kr': None})
     False
 
     >>> need_to_create_new_kr_instance({'target': 1, \
-        'complete_tos': get_todays_repeat_instance(), 'complete_kr': 1})
+        'complete_tos': get_todays_repeat_instance(), 'complete_kr': 1, 'incomplete_kr': None})
     False
 
     >>> need_to_create_new_kr_instance({'target': 1, \
-        'complete_tos': get_todays_repeat_instance(), 'complete_kr': None})
+        'complete_tos': get_todays_repeat_instance(), 'complete_kr': None, 'incomplete_kr': None})
     False
     """
     # Just to be safe, check to make sure we don't need to create a TD instance
     # for today instead.
-    complete_tos_instance = instances['complete_tos']
-
     if need_to_create_new_td_for_today(instances):
         return False
+
+    complete_tos_instance = instances['complete_tos']
+    kr_exists = instances['complete_kr'] is not None or instances['incomplete_kr'] is not None
+
 
     if complete_tos_instance is None \
         or (complete_tos_instance is not None \
             and complete_tos_instance != get_todays_repeat_instance()):
-        return instances['complete_kr'] is None
+        return not kr_exists
 
     return False
 
