@@ -126,11 +126,13 @@ def lookup():
     # Look for most recent TD with testing_trigger = 'Yes'
     instances['target'] = max_instance_testing_triggered(recent_encounters)
     # Check if TOS exists and is marked complete on or after this instance.
-    instances['complete_tos'] = max_instance('test_order_survey', recent_encounters)
+    instances['complete_tos'] = max_instance('test_order_survey', recent_encounters,
+        since=instances['target'])
     # Check for KRs on or after this instance.
-    instances['complete_kr'] = max_instance('kiosk_registration_4c7f', recent_encounters)
+    instances['complete_kr'] = max_instance('kiosk_registration_4c7f', recent_encounters,
+        since=instances['target'])
     instances['incomplete_kr'] = max_instance('kiosk_registration_4c7f', recent_encounters,
-        complete=False)
+        since=instances['target'], complete=False)
 
     if instances['complete_tos'] == get_todays_repeat_instance():
         # We won't test this PT twice in one day

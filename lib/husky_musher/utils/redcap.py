@@ -213,39 +213,45 @@ def max_instance_testing_triggered(redcap_record: List[dict]) -> Optional[int]:
     return _max_instance(events_testing_trigger_yes)
 
 
-def max_instance(instrument: str, redcap_record: List[dict],
+def max_instance(instrument: str, redcap_record: List[dict], since: int,
     complete: bool=True) -> Optional[int]:
     """
-    Returns the most recent instance number in a *redcap_record* with an
-    *instrument* marked according to the given variable *complete* (True filters
-    for only completed instances, and False filters only for incomplete or
-    unverified instances). The default value for *complete* is True.
+    Returns the most recent instance number in a *redcap_record* on or after the
+    given filter instance *since*. Filters also by events with an *instrument*
+    marked according to the given variable *complete* (True filters for only
+    completed instances, and False filters only for incomplete or unverified
+    instances). The default value for *complete* is True.
 
     Returns None if no completed insrument is found.
 
     >>> max_instance('kiosk_registration_4c7f', [ \
-        {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2'}])
+        {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2'}], \
+        since=0)
     1
 
     >>> max_instance('kiosk_registration_4c7f', [ \
         {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': ''}, \
         {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '1'}, \
-        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0'}])
+        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0'}], \
+        since=0)
 
     >>> max_instance('kiosk_registration_4c7f', [ \
         {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2'}, \
         {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '2'}, \
-        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0'}])
+        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0'}], \
+        since=0)
     2
 
     >>> max_instance('test_order_survey', [ \
         {'redcap_repeat_instance': '1', 'test_order_survey_complete': '1'}, \
-        {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '2'}])
+        {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '2'}], \
+        since=0)
     """
     events_instrument_complete = [
         encounter
         for encounter in redcap_record
-        if is_complete(instrument, encounter)
+        if int(encounter['redcap_repeat_instance']) >= since
+        and is_complete(instrument, encounter)
     ]
 
     if not events_instrument_complete:
