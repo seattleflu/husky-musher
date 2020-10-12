@@ -236,11 +236,31 @@ def max_instance(instrument: str, redcap_record: List[dict], since: int,
         since=0)
 
     >>> max_instance('kiosk_registration_4c7f', [ \
+        {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': ''}, \
+        {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '1'}, \
+        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0'}], \
+        since=0, complete=False)
+    3
+
+    >>> max_instance('kiosk_registration_4c7f', [ \
         {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2'}, \
         {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '2'}, \
         {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0'}], \
-        since=0)
+        since=2)
     2
+
+    >>> max_instance('kiosk_registration_4c7f', [ \
+        {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '0'}, \
+        {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '0'}, \
+        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '2'}], \
+        since=2, complete=False)
+    2
+
+    >>> max_instance('kiosk_registration_4c7f', [ \
+        {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2'}, \
+        {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '2'}, \
+        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0'}], \
+        since=3)
 
     >>> max_instance('test_order_survey', [ \
         {'redcap_repeat_instance': '1', 'test_order_survey_complete': '1'}, \
