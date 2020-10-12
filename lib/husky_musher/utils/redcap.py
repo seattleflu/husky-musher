@@ -179,7 +179,7 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
         'type': 'flat',
         'csvDelimiter': '',
         'events': 'encounter_arm_1',
-        'filterLogic': f'[record_id] = "{redcap_record["record_id"]}"',
+        'records': redcap_record["record_id"],
         'rawOrLabel': 'label',
         'rawOrLabelHeaders': 'raw',
         'exportCheckboxLabel': 'false',
