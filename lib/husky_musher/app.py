@@ -1,7 +1,7 @@
 import re
 import json
 from flask import Flask, redirect, render_template, request, url_for
-from werkzeug.exceptions import BadRequest, HTTPException, InternalServerError
+from werkzeug.exceptions import BadRequest, InternalServerError
 from .utils.shibboleth import *
 from .utils.redcap import *
 
@@ -28,14 +28,9 @@ def handle_bad_request(error):
     app.logger.error(f'Bad request: {message}', exc_info=message)
     return render_template('invalid_netid.html', netid=netid), 400
 
-@app.errorhandler(HTTPException)
-def handle_http_error(error):
-    app.logger.warning(f'POST to REDCap API failed: {error}')
-    return render_template('something_went_wrong.html'), error.code
-
-@app.errorhandler(InternalServerError)
-def handle_500_error(error):
-    app.logger.warning(f'Unexpected error occurred: {error}')
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    app.logger.error(f'Unexpected error occurred: {error}', exc_info=error)
     return render_template('something_went_wrong.html'), 500
 
 @app.route('/')
@@ -45,8 +40,7 @@ def main():
     user_info = extract_user_info(request.environ)
 
     if not (remote_user and user_info.get("netid")):
-        app.logger.error('No remote user!')
-        raise
+        raise InternalServerError('No remote user!')
 
     redcap_record = fetch_participant(user_info)
 
@@ -73,8 +67,7 @@ def main():
 
         if repeat_instance <= 0:
             # This should never happen!
-            app.logger.error("Failed to create a valid repeat instance")
-            raise
+            raise InternalServerError("Failed to create a valid repeat instance")
 
     # Generate a link to the appropriate questionnaire, and then redirect.
     survey_link = generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance)
