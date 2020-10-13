@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>{% block title %}Invalid NetID{% endblock %}</h2>
+<p>
+    <b>{{ netid }}</b> is not a valid personal UW NetID. Personal UW NetIDs are
+    a maximum of 8 characters and can only contain lowercase letters a-z and
+    numbers. Please double-check the NetID and try again.
+</p>
+{% endblock %}
