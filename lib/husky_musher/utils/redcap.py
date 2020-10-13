@@ -164,14 +164,18 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     Given a *redcap_record*, export the full list of related REDCap instances
     from the Encounter arm of the project that have occurred in the past week.
     """
+    fields = [
+        'record_id', 'testing_trigger', 'testing_determination_complete',
+        'kiosk_registration_4c7f_complete', 'test_order_survey_complete'
+    ]
     # Unfortunately, despite its appearance in the returned response from REDCap,
     # `redcap_repeat_instance` is not a field we can query by when exporting
-    # REDCap records. Additionally, the `dateRangeBegin` key in REDCap is not
+    # REDCap records. However, it does get returned when we request `record_id`
+    # as a field.
+    #
+    # Additionally, the `dateRangeBegin` key in REDCap is not
     # useful to us, because all instances associated with a record are returned,
     # regardless of the instance's creation or modification date.
-    #
-    # Thus, return all information from a REDCap record (without
-    # specifying fields) to retrieve the instance key.
     data = {
         'token': REDCAP_API_TOKEN,
         'content': 'record',
@@ -180,6 +184,7 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
         'csvDelimiter': '',
         'events': 'encounter_arm_1',
         'records': redcap_record["record_id"],
+        'fields': ",".join(map(str, fields)),
         'rawOrLabel': 'label',
         'rawOrLabelHeaders': 'raw',
         'exportCheckboxLabel': 'false',
