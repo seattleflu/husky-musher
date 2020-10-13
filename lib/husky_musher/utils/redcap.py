@@ -430,10 +430,7 @@ def need_to_create_new_td_for_today(instances: Dict[str, int]) -> bool:
     if not instances['target']:
         return True
 
-    complete_tos_instance = instances['complete_tos']
-    if complete_tos_instance is None \
-        or (complete_tos_instance is not None \
-            and complete_tos_instance != get_todays_repeat_instance()):
+    if instances['complete_tos'] != get_todays_repeat_instance():
         if instances['complete_kr'] is not None:
             return True
 
@@ -498,9 +495,7 @@ def need_to_create_new_kr_instance(instances: Dict[str, int]) -> bool:
     kr_exists = instances['complete_kr'] is not None or instances['incomplete_kr'] is not None
 
 
-    if complete_tos_instance is None \
-        or (complete_tos_instance is not None \
-            and complete_tos_instance != get_todays_repeat_instance()):
+    if complete_tos_instance != get_todays_repeat_instance():
         return not kr_exists
 
     return False
