@@ -23,6 +23,15 @@ section {
   margin: 0 auto;
 }
 
+nav {
+  border-bottom: 2px solid #ccc;
+  padding: 0.2em 1em;
+  background-color: #eee;
+  overflow: hidden;
+  box-sizing: border-box;
+  min-height: 2rem;
+}
+
 form {
   display: grid;
   place-items: center;
