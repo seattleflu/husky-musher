@@ -112,8 +112,7 @@ def lookup():
     if not registration_complete:
         # Give PT info on how to register
         return render_template('registration_required.html', netid=netid,
-            redcap_record_exists=redcap_record is not None,
-            registration_complete=registration_complete)
+            redcap_record_exists=redcap_record is not None)
 
     # Fetch all encounter events in the past 7 days.
     recent_encounters = fetch_encounter_events_past_week(redcap_record)
