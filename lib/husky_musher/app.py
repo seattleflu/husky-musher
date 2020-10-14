@@ -9,6 +9,10 @@ from .utils.redcap import *
 app = Flask(__name__)
 
 
+class InvalidNetId(BadRequest):
+    detail = 'Invalid NetID'
+    code = 400
+
 # Always include a Cache-Control: no-store header in the response so browsers
 # or intervening caches don't save pages across auth'd users.  Unlikely, but
 # possible.  This is also appropriate so that users always get a fresh REDCap
@@ -22,10 +26,11 @@ def set_cache_control(response):
 def page_not_found(error):
     return render_template('page_not_found.html'), 404
 
-@app.errorhandler(BadRequest)
+@app.errorhandler(InvalidNetId)
 def handle_bad_request(error):
-    message, netid = error.description
-    app.logger.error(f'Bad request: {message}', exc_info=message)
+    netid = error.description
+    error.description = '[redacted]'
+    app.logger.error(f'Invalid NetID', exc_info=error)
     return render_template('invalid_netid.html', netid=netid), 400
 
 @app.errorhandler(Exception)
@@ -98,7 +103,7 @@ def lookup():
     netid = request.form['netid'].lower().strip()
 
     if not re.match(r'^[a-z][a-z0-9]{,7}$', netid):
-        raise BadRequest(("Invalid NetID", netid))
+        raise InvalidNetId(netid)
 
     redcap_record = fetch_participant({ 'netid': netid })
 
