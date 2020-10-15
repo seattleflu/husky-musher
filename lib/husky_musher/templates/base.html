@@ -1,9 +1,15 @@
 <!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}{% endblock %} - Kiosk Flow</title>
+<title>{% block title %}{% endblock %} - Lead Dawgs</title>
+<link rel="shortcut icon" type="image/jpg" href="{{ url_for('static', filename='favicon.ico') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <nav>
-  <a href={{ url_for('.kiosk') }}>kiosk flow</a>
+  <a href={{ url_for('.lead_dawgs') }}>
+    <img id="paw-prints"
+      src={{ url_for('static', filename='paw_prints_Noun_Project.svg') }}
+      alt="two dog paw prints">
+      Lead Dawgs
+  </a>
 </nav>
 <header>
   <h1>

@@ -79,15 +79,15 @@ def main():
     return redirect(survey_link)
 
 
-@app.route('/kiosk')
-def kiosk():
-    return render_template('kiosk.html')
+@app.route('/lead-dawgs')
+def lead_dawgs():
+    return render_template('lead_dawgs.html')
 
-@app.route('/kiosk/lookup', methods=['GET'])
-def redirect_to_kiosk():
-    return redirect(url_for('.kiosk'))
+@app.route('/lead-dawgs/lookup', methods=['GET'])
+def redirect_to_lead_dawgs():
+    return redirect(url_for('.lead_dawgs'))
 
-@app.route('/kiosk/lookup', methods=['POST'])
+@app.route('/lead-dawgs/lookup', methods=['POST'])
 def lookup():
     """
     Automates the survey flow and logic for when a participant walks up to a

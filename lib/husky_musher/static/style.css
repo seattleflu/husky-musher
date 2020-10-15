@@ -53,3 +53,8 @@ button {
   text-align: center;
   font-size: 2rem;
 }
+
+#paw-prints {
+  height: 1.5em;
+  width: auto;
+}

@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.redcap import *
 
 
-class TestKioskFlow0(unittest.TestCase):
+class TestLeadDawgs0(unittest.TestCase):
     """
     A test case where a PT has no recent encounters.
     """
@@ -36,7 +36,7 @@ class TestKioskFlow0(unittest.TestCase):
         self.assertFalse(need_to_create_new_kr_instance(self.instances))
 
 
-class TestKioskFlow1(unittest.TestCase):
+class TestLeadDawgs1(unittest.TestCase):
     """
     A test case where a PT's testing was triggered on instance 7 (within past
     week) and neither a TOS or KR was complete on or after that instance.
@@ -87,7 +87,7 @@ class TestKioskFlow1(unittest.TestCase):
         self.assertTrue(need_to_create_new_kr_instance(self.instances))
 
 
-class TestKioskFlow2(unittest.TestCase):
+class TestLeadDawgs2(unittest.TestCase):
     """
     A test case where a PT's testing was triggered on instance 2 (within past
     week), there is no complete TOS on or after instance 2, but an incomplete KR
@@ -142,7 +142,7 @@ class TestKioskFlow2(unittest.TestCase):
         self.assertTrue(self.instances['incomplete_kr'] is not None)
 
 
-class TestKioskFlow3(unittest.TestCase):
+class TestLeadDawgs3(unittest.TestCase):
     """
     A test case where a PT's testing was triggered on instance 2 (within past
     week), there is a both a complete TOS and complete KR on or after instance
