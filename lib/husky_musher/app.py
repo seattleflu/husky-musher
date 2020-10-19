@@ -1,118 +1,42 @@
-import os
+import re
 import json
-import requests
-from flask import Flask, redirect, request
-from typing import Dict, Optional
-from datetime import datetime, timedelta
-from id3c.cli.redcap import is_complete
+from flask import Flask, redirect, render_template, request, url_for
+from werkzeug.exceptions import BadRequest, InternalServerError
+from .utils.shibboleth import *
+from .utils.redcap import *
 
 
-REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
-REDCAP_API_URL = os.environ['REDCAP_API_URL']
-STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
-ERROR_MESSAGE = """
-    <p>Error: Something went wrong. Please contact Husky Coronavirus Testing support by
-    emailing <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a> or by calling
-    <a href="tel:+12066162414">(206) 616-2414</a>.</p>
-"""
 app = Flask(__name__)
 
 
-def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
-    """
-    Exports a REDCap record matching the given *user_info*. Returns None if no
-    match is found.
+class InvalidNetId(BadRequest):
+    detail = 'Invalid NetID'
+    code = 400
 
-    Raises an :class:`AssertionError` if REDCap returns multiple matches for the
-    given *user_info*.
-    """
-    netid = user_info["netid"]
+# Always include a Cache-Control: no-store header in the response so browsers
+# or intervening caches don't save pages across auth'd users.  Unlikely, but
+# possible.  This is also appropriate so that users always get a fresh REDCap
+# lookup.
+@app.after_request
+def set_cache_control(response):
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
-    fields = [
-        'netid',
-        'record_id',
-        'eligibility_screening_complete',
-        'consent_form_complete',
-        'enrollment_questionnaire_complete',
-    ]
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('page_not_found.html'), 404
 
-    data = {
-        'token': REDCAP_API_TOKEN,
-        'content': 'record',
-        'format': 'json',
-        'type': 'flat',
-        'csvDelimiter': '',
-        'filterLogic': f'[netid] = "{netid}"',
-        'fields': ",".join(map(str, fields)),
-        'rawOrLabel': 'raw',
-        'rawOrLabelHeaders': 'raw',
-        'exportCheckboxLabel': 'false',
-        'exportSurveyFields': 'false',
-        'exportDataAccessGroups': 'false',
-        'returnFormat': 'json'
-    }
+@app.errorhandler(InvalidNetId)
+def handle_bad_request(error):
+    netid = error.description
+    error.description = '[redacted]'
+    app.logger.error(f'Invalid NetID', exc_info=error)
+    return render_template('invalid_netid.html', netid=netid), 400
 
-    response = requests.post(REDCAP_API_URL, data=data)
-    response.raise_for_status()
-
-    if len(response.json()) == 0:
-        return None
-
-    assert len(response.json()) == 1, "Multiple records exist with same NetID: " \
-        f"{[ record['record_id'] for record in response.json() ]}"
-
-    return response.json()[0]
-
-
-def register_participant(user_info: dict) -> str:
-    """
-    Returns the REDCap record ID of the participant newly registered with the
-    given *user_info*
-    """
-    # REDCap enforces that we must provide a non-empty record ID. Because we're
-    # using `forceAutoNumber` in the POST request, we do not need to provide a
-    # real record ID.
-    records = [{**user_info, 'record_id': 'record ID cannot be blank'}]
-    data = {
-        'token': REDCAP_API_TOKEN,
-        'content': 'record',
-        'format': 'json',
-        'type': 'flat',
-        'overwriteBehavior': 'normal',
-        'forceAutoNumber': 'true',
-        'data': json.dumps(records),
-        'returnContent': 'ids',
-        'returnFormat': 'json'
-    }
-    response = requests.post(REDCAP_API_URL, data=data)
-    response.raise_for_status()
-    return response.json()[0]
-
-
-def generate_survey_link(record_id: str, event: str, instrument: str, instance: int = None) -> str:
-    """
-    Returns a generated survey link for the given *instrument* within the
-    *event* of the *record_id*.
-
-    Will include the repeat *instance* if provided.
-    """
-    data = {
-        'token': REDCAP_API_TOKEN,
-        'content': 'surveyLink',
-        'format': 'json',
-        'instrument': instrument,
-        'event': event,
-        'record': record_id,
-        'returnFormat': 'json'
-    }
-
-    if instance:
-        data['repeat_instance'] = str(instance)
-
-    response = requests.post(REDCAP_API_URL, data=data)
-    response.raise_for_status()
-    return response.text
-
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    app.logger.error(f'Unexpected error occurred: {error}', exc_info=error)
+    return render_template('something_went_wrong.html'), 500
 
 @app.route('/')
 def main():
@@ -121,24 +45,14 @@ def main():
     user_info = extract_user_info(request.environ)
 
     if not (remote_user and user_info.get("netid")):
-        app.logger.error('No remote user!')
-        return ERROR_MESSAGE
+        raise InternalServerError('No remote user!')
 
-    try:
-        redcap_record = fetch_participant(user_info)
-
-    except Exception as e:
-        app.logger.warning(f'Failed to fetch REDCap data: {e}')
-        return ERROR_MESSAGE
+    redcap_record = fetch_participant(user_info)
 
     if redcap_record is None:
         # If not in REDCap project, create new record
-        try:
-            new_record_id = register_participant(user_info)
-            redcap_record = { 'record_id': new_record_id }
-        except Exception as e:
-            app.logger.warning(f'Failed to create new REDCap record: {e}')
-            return ERROR_MESSAGE
+        new_record_id = register_participant(user_info)
+        redcap_record = { 'record_id': new_record_id }
 
     # Because of REDCap's survey queue logic, we can point a participant to an
     # upstream survey. If they've completed it, REDCap will automatically direct
@@ -151,121 +65,74 @@ def main():
     # to today's daily attestation instrument.
     # If the participant has already completed the daily attestation,
     # REDCap will prevent the participant from filling out the survey again.
-    if is_complete('eligibility_screening', redcap_record) and \
-        is_complete('consent_form', redcap_record) and \
-        is_complete('enrollment_questionnaire', redcap_record):
-
+    if redcap_registration_complete(redcap_record):
         event = 'encounter_arm_1'
         instrument = 'daily_attestation'
-        # Repeat instance number should be days since the start of the study,
-        # with the first instance starting at 1.
-        repeat_instance = 1 + (datetime.today() - STUDY_START_DATE).days
+        repeat_instance = get_todays_repeat_instance()
 
         if repeat_instance <= 0:
             # This should never happen!
-            app.logger.error("Failed to create a valid repeat instance")
-            return ERROR_MESSAGE
-
-        if repeat_instance == 1:
-            attestation_start = (STUDY_START_DATE + timedelta(days=1)).strftime("%B %d, %Y")
-            return (f"""
-                <p>Thank you for enrolling in Husky Coronavirus Testing!<br><br>
-                Daily Check-ins start on {attestation_start}.<br>
-                You will receive a daily reminder to complete your check-in via text or email.<br><br>
-                If you have any questions or concerns, please reach out to us at:
-                <a href="mailto:huskytest@uw.edu">huskytest@uw.edu</a></p>
-            """)
+            raise InternalServerError("Failed to create a valid repeat instance")
 
     # Generate a link to the appropriate questionnaire, and then redirect.
-    try:
-        survey_link = generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance)
-
-    except Exception as e:
-        app.logger.warning(f'Failed to generate REDCap survey link: {e}')
-        return ERROR_MESSAGE
-
+    survey_link = generate_survey_link(redcap_record['record_id'], event, instrument, repeat_instance)
     return redirect(survey_link)
 
 
-# Always include a Cache-Control: no-store header in the response so browsers
-# or intervening caches don't save pages across auth'd users.  Unlikely, but
-# possible.  This is also appropriate so that users always get a fresh REDCap
-# lookup.
-@app.after_request
-def set_cache_control(response):
-    response.headers["Cache-Control"] = "no-store"
-    return response
+@app.route('/lead-dawgs')
+def lead_dawgs():
+    return render_template('lead_dawgs.html')
 
+@app.route('/lead-dawgs/lookup', methods=['GET'])
+def redirect_to_lead_dawgs():
+    return redirect(url_for('.lead_dawgs'))
 
-def extract_user_info(environ: dict) -> Dict[str, str]:
+@app.route('/lead-dawgs/lookup', methods=['POST'])
+def lookup():
     """
-    Extracts attributes of the authenticated user, provided by UW's IdP via our
-    Shibboleth SP, from the request environment *environ*.
+    Automates the survey flow and logic for when a participant walks up to a
+    kiosk for an observed nasal swab.
 
-    Keys of the returned dict match those used by our REDCap project.
+    Glossary:
+    =========
+    PT = participant
+    TD = Testing Determination instrument
+    TOS = Test Order Survey insrument
+    KR = Kiosk Registration instrument
     """
-    return {
-        "netid": environ['uid'],
+    netid = request.form['netid'].lower().strip()
 
-        # This won't always be @uw.edu.
-        "email": environ.get("mail", ""),
+    if not re.match(r'^[a-z][a-z0-9]{,7}$', netid):
+        raise InvalidNetId(netid)
 
-        # Given name will include any middle initial/name.  Both name fields
-        # will contain the preferred name parts, if set, otherwise the
-        # administrative name parts.
-        "core_participant_first_name": environ.get("givenName", ""),
-        "core_participant_last_name":  environ.get("surname", ""),
+    redcap_record = fetch_participant({ 'netid': netid })
 
-        # Department is generally a colon-separated set of
-        # increasingly-specific labels, starting with the School.
-        "uw_school": environ.get("department", ""),
+    # Check if PT is already reigstered
+    registration_complete = redcap_registration_complete(redcap_record)
+    if not registration_complete:
+        # Give PT info on how to register
+        return render_template('registration_required.html', netid=netid,
+            redcap_record_exists=redcap_record is not None)
 
-        **extract_affiliation(environ),
-    }
+    # Fetch all encounter events in the past 7 days.
+    recent_encounters = fetch_encounter_events_past_week(redcap_record)
 
+    # Track noteworthy instances used in survey generation logic
+    instances: Dict[str, int] = dict()
 
-def extract_affiliation(environ: dict) -> Dict[str, str]:
-    """
-    Transforms a multi-value affiliation string into our REDCap fields.
+    # Look for most recent TD with testing_trigger = 'Yes'
+    instances['target'] = max_instance_testing_triggered(recent_encounters)
+    # Check if TOS exists and is marked complete on or after this instance.
+    instances['complete_tos'] = max_instance('test_order_survey', recent_encounters,
+        since=instances['target'])
+    # Check for KRs on or after this instance.
+    instances['complete_kr'] = max_instance('kiosk_registration_4c7f', recent_encounters,
+        since=instances['target'])
+    instances['incomplete_kr'] = max_instance('kiosk_registration_4c7f', recent_encounters,
+        since=instances['target'], complete=False)
 
-    Keys of the returned dict match those used by our REDCap project.
+    if instances['complete_tos'] == get_todays_repeat_instance():
+        # We won't test this PT twice in one day
+        return render_template('test_already_ordered.html', netid=netid)
 
-    >>> extract_affiliation({"unscoped-affiliation": "member;faculty;employee;alum"})
-    {'affiliation': 'faculty', 'affiliation_other': ''}
-
-    >>> extract_affiliation({"unscoped-affiliation": "member;student;staff"})
-    {'affiliation': 'student', 'affiliation_other': ''}
-
-    >>> extract_affiliation({"unscoped-affiliation": "member;faculty;student"})
-    {'affiliation': 'student', 'affiliation_other': ''}
-
-    >>> extract_affiliation({"unscoped-affiliation": "member;staff;alum"})
-    {'affiliation': 'staff', 'affiliation_other': ''}
-
-    >>> extract_affiliation({"unscoped-affiliation": "member;employee"})
-    {'affiliation': 'staff', 'affiliation_other': ''}
-
-    >>> extract_affiliation({"unscoped-affiliation": "member;affiliate;alum"})
-    {'affiliation': 'other', 'affiliation_other': 'affiliate;alum'}
-
-    >>> extract_affiliation({"unscoped-affiliation": "member"})
-    {'affiliation': '', 'affiliation_other': ''}
-
-    >>> extract_affiliation({})
-    {'affiliation': '', 'affiliation_other': ''}
-    """
-    raw_affilations = environ.get("unscoped-affiliation", "")
-
-    # "Member" is uninteresting and uninformative; a generic catch-all.
-    # The empty string might arise from our fallback above.
-    affiliations = set(raw_affilations.split(";")) - {"member",""}
-
-    rules = [
-        ("student"  in affiliations,    {"affiliation": "student",  "affiliation_other": ""}),
-        ("faculty"  in affiliations,    {"affiliation": "faculty",  "affiliation_other": ""}),
-        ("staff"    in affiliations,    {"affiliation": "staff",    "affiliation_other": ""}),
-        ("employee" in affiliations,    {"affiliation": "staff",    "affiliation_other": ""}),
-        (len(affiliations) > 0,         {"affiliation": "other",    "affiliation_other": ";".join(sorted(affiliations))}),
-        (True,                          {"affiliation": "",         "affiliation_other": ""})]
-
-    return next(result for condition, result in rules if condition)
+    return redirect(kiosk_registration_link(redcap_record, instances))

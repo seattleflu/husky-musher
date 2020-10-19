@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>{% block title %}Registration Required{% endblock %}</h2>
+{% if not redcap_record_exists %}
+    <p>
+        <b>{{ netid }}</b> has not signed up!
+    </p>
+{% else %}
+    <p>
+        <b>{{ netid }}</b> has not finished signing up for Husky Coronavirus Testing!
+    </p>
+{% endif %}
+<p>
+    Please visit <a href="http://seattleflu.org/uw/start">http://seattleflu.org/uw/start</a>
+    to sign up.
+</p>
+
+{% endblock %}
