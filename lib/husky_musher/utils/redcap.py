@@ -197,8 +197,14 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     response.raise_for_status()
 
     encounters = response.json()
-    one_week_ago = get_todays_repeat_instance() - 7
-    return [ e for e in encounters if e['redcap_repeat_instance'] >= one_week_ago ]
+    return [ e for e in encounters if e['redcap_repeat_instance'] >= one_week_ago() ]
+
+
+def one_week_ago() -> int:
+    """
+    Return the REDCap instance instance currently representing one week ago.
+    """
+    return get_todays_repeat_instance() - 7
 
 
 def max_instance_testing_triggered(redcap_record: List[dict]) -> Optional[int]:
@@ -279,10 +285,18 @@ def max_instance(instrument: str, redcap_record: List[dict], since: int,
     events_instrument_complete = [
         encounter
         for encounter in redcap_record
-        if int(encounter['redcap_repeat_instance']) >= since
-        and encounter[f"{instrument}_complete"] != ''
+        if encounter[f"{instrument}_complete"] != ''
         and is_complete(instrument, encounter) == complete
     ]
+
+    # Filter since the latest instance where testing was triggered.
+    # If no instance exists, do not filter. Note: at this point in the code, we
+    # already are only considering instances in the past week.
+    if since is not None:
+        events_instrument_complete = list(filter(
+            lambda encounter: int(encounter['redcap_repeat_instance']) >= since,
+            events_instrument_complete
+        ))
 
     if not events_instrument_complete:
         return None
