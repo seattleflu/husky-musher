@@ -192,3 +192,54 @@ class TestLeadDawgs3(unittest.TestCase):
 
     def test_need_to_create_new_kr_instance(self):
         self.assertFalse(need_to_create_new_kr_instance(self.instances))
+
+
+class TestLeadDawgs4(unittest.TestCase):
+    """
+    A test case where a PT's testing was never triggered but they have a
+    complete TOS and a complete KR in the past week.
+    """
+    def setUp(self):
+        self.recent_encounters = [
+            {
+                'redcap_repeat_instance': str(one_week_ago() + 1),
+                'testing_determination_complete': '2',
+                'testing_trigger': 'No',
+                'test_order_survey_complete': '',
+                'kiosk_registration_4c7f_complete': ''
+            }, {
+                'redcap_repeat_instance': str(one_week_ago() + 2),
+                'testing_determination_complete': '',
+                'testing_trigger': '',
+                'test_order_survey_complete': '',
+                'kiosk_registration_4c7f_complete': '2'
+            }, {
+                'redcap_repeat_instance': str(one_week_ago() + 3),
+                'testing_determination_complete': '',
+                'testing_trigger': '',
+                'test_order_survey_complete': '2',
+                'kiosk_registration_4c7f_complete': ''
+            }
+        ]
+        self.instances = dict()
+        self.instances['target'] = target = max_instance_testing_triggered(self.recent_encounters)
+        self.instances['complete_tos'] = max_instance('test_order_survey',
+            self.recent_encounters, since=target)
+        self.instances['complete_kr'] = max_instance('kiosk_registration_4c7f',
+            self.recent_encounters, since=target)
+        self.instances['incomplete_kr'] = max_instance('kiosk_registration_4c7f',
+            self.recent_encounters, since=target, complete=False)
+
+    def test_instances(self):
+        self.assertEqual(self.instances, {
+            'target': None,
+            'complete_tos': one_week_ago() + 3,
+            'complete_kr': one_week_ago() + 2,
+            'incomplete_kr': None,
+        })
+
+    def test_need_to_create_new_td_for_today(self):
+        self.assertTrue(need_to_create_new_td_for_today(self.instances))
+
+    def test_need_to_create_new_kr_instance(self):
+        self.assertFalse(need_to_create_new_kr_instance(self.instances))

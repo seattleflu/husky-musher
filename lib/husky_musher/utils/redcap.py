@@ -285,10 +285,18 @@ def max_instance(instrument: str, redcap_record: List[dict], since: int,
     events_instrument_complete = [
         encounter
         for encounter in redcap_record
-        if int(encounter['redcap_repeat_instance']) >= since
-        and encounter[f"{instrument}_complete"] != ''
+        if encounter[f"{instrument}_complete"] != ''
         and is_complete(instrument, encounter) == complete
     ]
+
+    # Filter since the latest instance where testing was triggered.
+    # If no instance exists, do not filter. Note: at this point in the code, we
+    # already are only considering instances in the past week.
+    if since is not None:
+        events_instrument_complete = list(filter(
+            lambda encounter: int(encounter['redcap_repeat_instance']) >= since,
+            events_instrument_complete
+        ))
 
     if not events_instrument_complete:
         return None
