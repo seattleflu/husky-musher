@@ -197,8 +197,14 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     response.raise_for_status()
 
     encounters = response.json()
-    one_week_ago = get_todays_repeat_instance() - 7
-    return [ e for e in encounters if e['redcap_repeat_instance'] >= one_week_ago ]
+    return [ e for e in encounters if e['redcap_repeat_instance'] >= one_week_ago() ]
+
+
+def one_week_ago() -> int:
+    """
+    Return the REDCap instance instance currently representing one week ago.
+    """
+    return get_todays_repeat_instance() - 7
 
 
 def max_instance_testing_triggered(redcap_record: List[dict]) -> Optional[int]:
