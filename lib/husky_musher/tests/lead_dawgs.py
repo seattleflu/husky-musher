@@ -8,7 +8,6 @@ from utils.redcap import *
 REDCAP_RECORD = {
     'record_id': '-1',
 }
-PROJECT = Project(REDCAP_API_URL, REDCAP_API_TOKEN, PROJECT_ID)
 
 class TestLeadDawgs0(unittest.TestCase):
     """

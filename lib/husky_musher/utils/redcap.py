@@ -14,6 +14,8 @@ PROJECT_ID = 23854
 EVENT_ID = 742155
 STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
 
+PROJECT = Project(REDCAP_API_URL, REDCAP_API_TOKEN, PROJECT_ID)
+
 # These values in REDCap must be imported as their raw codes, not their label,
 # else we get a 400 Client Error from REDCap when POSTing.
 YES = '1'
@@ -520,9 +522,9 @@ def need_to_create_new_kr_instance(instances: Dict[str, int]) -> bool:
 
 def kiosk_registration_link(redcap_record: dict, instances: Dict[str, int]) -> str:
     """
-    Given information about recent *instances* of a REDCap record, returns an
-    appropriate survey link to the correct instance of a Kiosk Registration
-    instrument according to the pre-determined logic flow.
+    Given information about recent *instances* of a *redcap_record*, returns an
+    internal link to the correct instance of a Kiosk Registration instrument
+    according to the pre-determined logic flow.
     """
     incomplete_kr_instance = instances['incomplete_kr']
 
@@ -548,10 +550,8 @@ def generate_redcap_link(redcap_record: dict, instance: int):
     Given a *redcap_record*, generate a link to the internal REDCap portal's
     Kiosk Registration form for the record's given REDCap repeat *instance*.
     """
-    project = Project(REDCAP_API_URL, REDCAP_API_TOKEN, PROJECT_ID)
-
     query = urlencode({
-        'pid': project.id,
+        'pid': PROJECT.id,
         'id': redcap_record['record_id'],
         'arm': 'encounter_arm_1',
         'event_id': EVENT_ID,
@@ -559,5 +559,5 @@ def generate_redcap_link(redcap_record: dict, instance: int):
         'instance': instance,
     })
 
-    return urljoin(project.base_url,
-        f"redcap_v{project.redcap_version}/DataEntry/index.php?{query}")
+    return urljoin(PROJECT.base_url,
+        f"redcap_v{PROJECT.redcap_version}/DataEntry/index.php?{query}")
