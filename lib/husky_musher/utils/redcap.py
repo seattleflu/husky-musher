@@ -14,6 +14,22 @@ PROJECT_ID = 23854
 EVENT_ID = 742155
 STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
 
+# TODO - Since creating PROJECT has side effects (network requests), we should
+# # probably define it lazily (e.g. with `global PROJECT` and then assigning it
+# the Project object `if not PROJECT`.
+#
+# During development, I could not get unit tests to run without running into a
+# NameError saying PROJECT is not defined.
+# Tom left some helpful feedback in a PR comment:
+# > I suspect this is because the tests as-is access PROJECT directly but it was
+# > only initialized with a value on the first call to generate_redcap_link().
+# > The references to PROJECT in the tests are resolved before that first call
+# > happens, so PROJECT was unset.
+#
+# It would be nice to investigate further how to define PROJECT lazily in
+# coordination with unit tests.
+#
+# -kfay, 23 October 2020
 PROJECT = Project(REDCAP_API_URL, REDCAP_API_TOKEN, PROJECT_ID)
 
 # These values in REDCap must be imported as their raw codes, not their label,
