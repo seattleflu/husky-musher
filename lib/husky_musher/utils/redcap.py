@@ -4,12 +4,33 @@ import requests
 from flask import request
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List
-from id3c.cli.redcap import is_complete
+from urllib.parse import urlencode, urljoin
+from id3c.cli.redcap import is_complete, Project
 
 
 REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
 REDCAP_API_URL = os.environ['REDCAP_API_URL']
+PROJECT_ID = 23854
+EVENT_ID = 742155
 STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
+
+# TODO - Since creating PROJECT has side effects (network requests), we should
+# # probably define it lazily (e.g. with `global PROJECT` and then assigning it
+# the Project object `if not PROJECT`.
+#
+# During development, I could not get unit tests to run without running into a
+# NameError saying PROJECT is not defined.
+# Tom left some helpful feedback in a PR comment:
+# > I suspect this is because the tests as-is access PROJECT directly but it was
+# > only initialized with a value on the first call to generate_redcap_link().
+# > The references to PROJECT in the tests are resolved before that first call
+# > happens, so PROJECT was unset.
+#
+# It would be nice to investigate further how to define PROJECT lazily in
+# coordination with unit tests.
+#
+# -kfay, 23 October 2020
+PROJECT = Project(REDCAP_API_URL, REDCAP_API_TOKEN, PROJECT_ID)
 
 # These values in REDCap must be imported as their raw codes, not their label,
 # else we get a 400 Client Error from REDCap when POSTing.
@@ -517,34 +538,42 @@ def need_to_create_new_kr_instance(instances: Dict[str, int]) -> bool:
 
 def kiosk_registration_link(redcap_record: dict, instances: Dict[str, int]) -> str:
     """
-    Given information about recent *instances* of a REDCap record, returns an
-    appropriate survey link to the correct instance of a Kiosk Registration
-    instrument according to the pre-determined logic flow.
+    Given information about recent *instances* of a *redcap_record*, returns an
+    internal link to the correct instance of a Kiosk Registration instrument
+    according to the pre-determined logic flow.
     """
-    record_id = redcap_record['record_id']
-    event = 'encounter_arm_1'
-    instrument = 'kiosk_registration_4c7f'
     incomplete_kr_instance = instances['incomplete_kr']
 
     if need_to_create_new_td_for_today(instances):
         # Create TD instance based on # of days since project start.
         create_new_testing_determination(redcap_record)
-
-        # Generate a link to the KR, and then redirect.
-        survey_link = generate_survey_link(record_id, event, instrument,
-            get_todays_repeat_instance())
+        instance = get_todays_repeat_instance()
 
     elif need_to_create_new_kr_instance(instances):
-        # Generate a link to the target instance, and then redirect.
-        survey_link = generate_survey_link(record_id, event, instrument,
-            instances['target'])
+        instance = instances['target']
 
     elif incomplete_kr_instance is not None:
-        # Generate a link to the existing KR that is incomplete, and then redirect.
-        survey_link = generate_survey_link(record_id, event, instrument,
-            incomplete_kr_instance)
+        instance = incomplete_kr_instance
 
     else:
         raise Exception("Logic error when generating survey links.")
 
-    return survey_link
+    return generate_redcap_link(redcap_record, instance)
+
+
+def generate_redcap_link(redcap_record: dict, instance: int):
+    """
+    Given a *redcap_record*, generate a link to the internal REDCap portal's
+    Kiosk Registration form for the record's given REDCap repeat *instance*.
+    """
+    query = urlencode({
+        'pid': PROJECT.id,
+        'id': redcap_record['record_id'],
+        'arm': 'encounter_arm_1',
+        'event_id': EVENT_ID,
+        'page': 'kiosk_registration_4c7f',
+        'instance': instance,
+    })
+
+    return urljoin(PROJECT.base_url,
+        f"redcap_v{PROJECT.redcap_version}/DataEntry/index.php?{query}")

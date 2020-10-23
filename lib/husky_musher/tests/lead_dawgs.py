@@ -5,6 +5,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.redcap import *
 
+REDCAP_RECORD = {
+    'record_id': '-1',
+}
 
 class TestLeadDawgs0(unittest.TestCase):
     """
@@ -34,6 +37,14 @@ class TestLeadDawgs0(unittest.TestCase):
 
     def test_need_to_create_new_kr_instance(self):
         self.assertFalse(need_to_create_new_kr_instance(self.instances))
+
+    def test_kiosk_registration_link(self):
+        self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
+            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
+            f"&instance={get_todays_repeat_instance()}"
+        )
 
 
 class TestLeadDawgs1(unittest.TestCase):
@@ -86,6 +97,13 @@ class TestLeadDawgs1(unittest.TestCase):
     def test_need_to_create_new_kr_instance(self):
         self.assertTrue(need_to_create_new_kr_instance(self.instances))
 
+    def test_kiosk_registration_link(self):
+        self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
+            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
+            f"&instance={self.instances['target']}"
+        )
 
 class TestLeadDawgs2(unittest.TestCase):
     """
@@ -141,6 +159,13 @@ class TestLeadDawgs2(unittest.TestCase):
     def test_incomplete_kr_instance_is_not_none(self):
         self.assertTrue(self.instances['incomplete_kr'] is not None)
 
+    def test_kiosk_registration_link(self):
+        self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
+            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
+            f"&instance={self.instances['incomplete_kr']}"
+        )
 
 class TestLeadDawgs3(unittest.TestCase):
     """
@@ -193,6 +218,14 @@ class TestLeadDawgs3(unittest.TestCase):
     def test_need_to_create_new_kr_instance(self):
         self.assertFalse(need_to_create_new_kr_instance(self.instances))
 
+    def test_kiosk_registration_link(self):
+        self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
+            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
+            f"&instance={get_todays_repeat_instance()}"
+        )
+
 
 class TestLeadDawgs4(unittest.TestCase):
     """
@@ -243,3 +276,11 @@ class TestLeadDawgs4(unittest.TestCase):
 
     def test_need_to_create_new_kr_instance(self):
         self.assertFalse(need_to_create_new_kr_instance(self.instances))
+
+    def test_kiosk_registration_link(self):
+        self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
+            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
+            f"&instance={get_todays_repeat_instance()}"
+        )
