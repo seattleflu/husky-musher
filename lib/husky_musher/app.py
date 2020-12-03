@@ -1,3 +1,4 @@
+import os
 import re
 import json
 from flask import Flask, redirect, render_template, request, url_for
@@ -5,6 +6,8 @@ from werkzeug.exceptions import BadRequest, InternalServerError
 from .utils.shibboleth import *
 from .utils.redcap import *
 
+
+DEVELOPMENT_MODE = os.environ.get("FLASK_ENV", "production") == "development"
 
 app = Flask(__name__)
 
@@ -41,8 +44,12 @@ def handle_unexpected_error(error):
 @app.route('/')
 def main():
     # Get NetID and other attributes from Shibboleth data
-    remote_user = request.remote_user
-    user_info = extract_user_info(request.environ)
+    if DEVELOPMENT_MODE:
+        remote_user = os.environ.get("REMOTE_USER")
+        user_info = extract_user_info(os.environ)
+    else:
+        remote_user = request.remote_user
+        user_info = extract_user_info(request.environ)
 
     if not (remote_user and user_info.get("netid")):
         raise InternalServerError('No remote user!')

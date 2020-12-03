@@ -7,12 +7,18 @@ Run the Flask app with:
 pipenv run flask run
 ```
 
+The default is to use the production REDCap project (i.e. when `FLASK_ENV` is
+unset or `FLASK_ENV=production`).
+
+To use the testing/development REDCap project instead, set
+`FLASK_ENV=development`.
+
 ## Requirements
 See Pipfile for required libraries.
 
 The required environment variables are:
-* `REDCAP_API_URL`
-* `REDCAP_API_TOKEN`
+* `REDCAP_API_TOKEN_redcap.iths.org_23854` (production)
+* `REDCAP_API_TOKEN_redcap.iths.org_24515` (development)
 
 
 ## Tests
