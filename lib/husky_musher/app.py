@@ -1,7 +1,9 @@
 import os
 import re
 import json
+import prometheus_flask_exporter
 from flask import Flask, redirect, render_template, request, url_for
+from prometheus_flask_exporter.multiprocess import MultiprocessPrometheusMetrics
 from werkzeug.exceptions import BadRequest, InternalServerError
 from .utils.shibboleth import *
 from .utils.redcap import *
@@ -10,6 +12,17 @@ from .utils.redcap import *
 DEVELOPMENT_MODE = os.environ.get("FLASK_ENV", "production") == "development"
 
 app = Flask(__name__)
+
+
+# Setup Prometheus metrics collector.
+if "prometheus_multiproc_dir" in os.environ:
+    metrics = MultiprocessPrometheusMetrics(
+        app,
+        defaults_prefix = prometheus_flask_exporter.NO_PREFIX,
+        default_latency_as_histogram = False,
+        excluded_paths = ["^/static/"])
+
+    metrics.register_endpoint("/metrics")
 
 
 class InvalidNetId(BadRequest):
