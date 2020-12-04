@@ -8,10 +8,23 @@ pipenv run flask run
 ```
 
 The default is to use the production REDCap project (i.e. when `FLASK_ENV` is
-unset or `FLASK_ENV=production`).
+unset or `FLASK_ENV=production`).  In this mode, the authenticated user and
+their information is expected to be provided in the request
+environment/context, i.e. by Apache/Shibboleth.
 
 To use the testing/development REDCap project instead, set
-`FLASK_ENV=development`.
+`FLASK_ENV=development`.  In this mode, the "authenticated" user and their
+information is provided in the process environment as normal environment
+variables.  For example:
+
+```sh
+FLASK_ENV=development \
+REMOTE_USER=trsibley@u.washington.edu \
+uid=trsibley \
+givenName=Thomas \
+surname=Sibley \
+  pipenv run flask run
+```
 
 ## Requirements
 See Pipfile for required libraries.
