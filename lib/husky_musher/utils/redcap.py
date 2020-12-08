@@ -3,16 +3,26 @@ import json
 import requests
 from flask import request
 from datetime import datetime, timedelta
+from prometheus_client import CollectorRegistry, Summary
 from typing import Dict, Optional, List
 from urllib.parse import urlencode, urljoin
 from id3c.cli.redcap import is_complete, Project
 
 
-REDCAP_API_TOKEN = os.environ['REDCAP_API_TOKEN']
-REDCAP_API_URL = os.environ['REDCAP_API_URL']
-PROJECT_ID = 23854
-EVENT_ID = 742155
+REDCAP_API_URL = "https://redcap.iths.org/api/"
+DEVELOPMENT_MODE = os.environ.get("FLASK_ENV", "production") == "development"
+
+if DEVELOPMENT_MODE:
+    # TESTING 2: Husky Coronavirus Testing
+    PROJECT_ID = 24515
+    EVENT_ID = 743558
+else:
+    # Husky Coronavirus Testing
+    PROJECT_ID = 23854
+    EVENT_ID = 742155
+
 STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
+
 
 # TODO - Since creating PROJECT has side effects (network requests), we should
 # # probably define it lazily (e.g. with `global PROJECT` and then assigning it
@@ -30,7 +40,7 @@ STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
 # coordination with unit tests.
 #
 # -kfay, 23 October 2020
-PROJECT = Project(REDCAP_API_URL, REDCAP_API_TOKEN, PROJECT_ID)
+PROJECT = Project(REDCAP_API_URL, PROJECT_ID)
 
 # These values in REDCap must be imported as their raw codes, not their label,
 # else we get a 400 Client Error from REDCap when POSTing.
@@ -39,6 +49,19 @@ KIOSK_WALK_IN = '4'
 COMPLETE = '2'
 
 
+METRIC_REGISTRY = CollectorRegistry()
+METRIC_REDCAP_REQUEST_SECONDS = Summary(
+    "redcap_request_seconds",
+    "Time spent making requests to REDCap",
+    labelnames = ["function"],
+    registry = METRIC_REGISTRY,
+)
+
+def metric_redcap_request_seconds(function):
+    return METRIC_REDCAP_REQUEST_SECONDS.labels(function.__name__).time()(function)
+
+
+@metric_redcap_request_seconds
 def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     """
     Exports a REDCap record matching the given *user_info*. Returns None if no
@@ -58,7 +81,7 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     ]
 
     data = {
-        'token': REDCAP_API_TOKEN,
+        'token': PROJECT.api_token,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
@@ -73,7 +96,7 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
         'returnFormat': 'json'
     }
 
-    response = requests.post(REDCAP_API_URL, data=data)
+    response = requests.post(PROJECT.api_url, data=data)
     response.raise_for_status()
 
     if len(response.json()) == 0:
@@ -85,6 +108,7 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     return response.json()[0]
 
 
+@metric_redcap_request_seconds
 def register_participant(user_info: dict) -> str:
     """
     Returns the REDCap record ID of the participant newly registered with the
@@ -95,7 +119,7 @@ def register_participant(user_info: dict) -> str:
     # real record ID.
     records = [{**user_info, 'record_id': 'record ID cannot be blank'}]
     data = {
-        'token': REDCAP_API_TOKEN,
+        'token': PROJECT.api_token,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
@@ -105,11 +129,12 @@ def register_participant(user_info: dict) -> str:
         'returnContent': 'ids',
         'returnFormat': 'json'
     }
-    response = requests.post(REDCAP_API_URL, data=data)
+    response = requests.post(PROJECT.api_url, data=data)
     response.raise_for_status()
     return response.json()[0]
 
 
+@metric_redcap_request_seconds
 def generate_survey_link(record_id: str, event: str, instrument: str, instance: int = None) -> str:
     """
     Returns a generated survey link for the given *instrument* within the
@@ -118,7 +143,7 @@ def generate_survey_link(record_id: str, event: str, instrument: str, instance: 
     Will include the repeat *instance* if provided.
     """
     data = {
-        'token': REDCAP_API_TOKEN,
+        'token': PROJECT.api_token,
         'content': 'surveyLink',
         'format': 'json',
         'instrument': instrument,
@@ -130,7 +155,7 @@ def generate_survey_link(record_id: str, event: str, instrument: str, instance: 
     if instance:
         data['repeat_instance'] = str(instance)
 
-    response = requests.post(REDCAP_API_URL, data=data)
+    response = requests.post(PROJECT.api_url, data=data)
     response.raise_for_status()
     return response.text
 
@@ -180,6 +205,7 @@ def redcap_registration_complete(redcap_record: dict) -> bool:
             is_complete('enrollment_questionnaire', redcap_record))
 
 
+@metric_redcap_request_seconds
 def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     """
     Given a *redcap_record*, export the full list of related REDCap instances
@@ -198,7 +224,7 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     # useful to us, because all instances associated with a record are returned,
     # regardless of the instance's creation or modification date.
     data = {
-        'token': REDCAP_API_TOKEN,
+        'token': PROJECT.api_token,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
@@ -214,7 +240,7 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
         'returnFormat': 'json'
     }
 
-    response = requests.post(REDCAP_API_URL, data=data)
+    response = requests.post(PROJECT.api_url, data=data)
     response.raise_for_status()
 
     encounters = response.json()
@@ -379,6 +405,7 @@ def _max_instance(redcap_record: List[dict]) -> int:
     return max_instance
 
 
+@metric_redcap_request_seconds
 def create_new_testing_determination(redcap_record: dict):
     """
     Given a *redcap_record* to import, creates a new Testing Determination form
@@ -398,7 +425,7 @@ def create_new_testing_determination(redcap_record: dict):
     }]
 
     data = {
-        'token': REDCAP_API_TOKEN,
+        'token': PROJECT.api_token,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
@@ -409,7 +436,7 @@ def create_new_testing_determination(redcap_record: dict):
         'returnFormat': 'json'
     }
 
-    response = requests.post(REDCAP_API_URL, data=data)
+    response = requests.post(PROJECT.api_url, data=data)
     response.raise_for_status()
 
     assert len(response.json()) == 1, \

@@ -10,6 +10,7 @@ id3c = {git = "https://github.com/seattleflu/id3c"}
 flask = "*"
 requests = "*"
 fsspec = "*"
+prometheus-flask-exporter = "*"
 
 [requires]
 python_version = "3.6"
