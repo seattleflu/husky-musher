@@ -99,13 +99,15 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     response = requests.post(PROJECT.api_url, data=data)
     response.raise_for_status()
 
-    if len(response.json()) == 0:
+    records = response.json()
+
+    if len(records) == 0:
         return None
 
-    assert len(response.json()) == 1, "Multiple records exist with same NetID: " \
-        f"{[ record['record_id'] for record in response.json() ]}"
+    assert len(records) == 1, "Multiple records exist with same NetID: " \
+        f"{[ record['record_id'] for record in records ]}"
 
-    return response.json()[0]
+    return records[0]
 
 
 @metric_redcap_request_seconds
