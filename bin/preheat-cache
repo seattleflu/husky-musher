@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+from husky_musher.utils.redcap import CACHE, PROJECT, redcap_registration_complete
+
+# XXX FIXME: This is copied from fetch_participant() and thus could drift out
+# of sync.  I don't anticipate we'll use this script more than once or twice,
+# but if we start doing so, it'd be better to remove the potential for drift.
+# Note that the use of the "raw" flag and a "filter" to ensure we only pick up
+# the instrument/event with a netid is also behaviour that's carefully matched
+# to fetch_participant().  It, too, runs the risk of drifting out of sync.
+fields = [
+    'netid',
+    'record_id',
+    'eligibility_screening_complete',
+    'consent_form_complete',
+    'enrollment_questionnaire_complete',
+]
+
+records = PROJECT.records(raw = True, fields = fields, filter = '[netid] <> ""')
+print(f"{len(records):7,} records fetched")
+
+n = 0
+
+for record in records:
+    netid = record.get("netid")
+
+    if netid and redcap_registration_complete(record):
+        CACHE[netid] = record
+        n += 1
+
+print(f"{n:7,} records cached")
+print(f"{len(CACHE):7,} records in cache")
