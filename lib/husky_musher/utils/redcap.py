@@ -7,6 +7,7 @@ from prometheus_client import CollectorRegistry, Summary
 from typing import Dict, Optional, List
 from urllib.parse import urlencode, urljoin
 from id3c.cli.redcap import is_complete, Project
+from diskcache import FanoutCache
 
 
 REDCAP_API_URL = "https://redcap.iths.org/api/"
@@ -57,11 +58,20 @@ METRIC_REDCAP_REQUEST_SECONDS = Summary(
     registry = METRIC_REGISTRY,
 )
 
-def metric_redcap_request_seconds(function):
-    return METRIC_REDCAP_REQUEST_SECONDS.labels(function.__name__).time()(function)
+# Declare this before using it so that it's always an exported metric, even if
+# never called due to perfect caching.
+METRIC_FETCH_PARTICIPANT = METRIC_REDCAP_REQUEST_SECONDS.labels("fetch_participant")
+
+def metric_redcap_request_seconds(function_name = None):
+    def decorator(function):
+        return METRIC_REDCAP_REQUEST_SECONDS.labels(function_name or function.__name__).time()(function)
+    return decorator
 
 
-@metric_redcap_request_seconds
+CACHE = FanoutCache(os.environ.get("CACHE"))
+
+
+@metric_redcap_request_seconds("fetch_participant (cached)")
 def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     """
     Exports a REDCap record matching the given *user_info*. Returns None if no
@@ -71,44 +81,54 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     given *user_info*.
     """
     netid = user_info["netid"]
+    record = CACHE.get(netid)
 
-    fields = [
-        'netid',
-        'record_id',
-        'eligibility_screening_complete',
-        'consent_form_complete',
-        'enrollment_questionnaire_complete',
-    ]
+    if not record:
+        with METRIC_FETCH_PARTICIPANT.time():
+            fields = [
+                'netid',
+                'record_id',
+                'eligibility_screening_complete',
+                'consent_form_complete',
+                'enrollment_questionnaire_complete',
+            ]
 
-    data = {
-        'token': PROJECT.api_token,
-        'content': 'record',
-        'format': 'json',
-        'type': 'flat',
-        'csvDelimiter': '',
-        'filterLogic': f'[netid] = "{netid}"',
-        'fields': ",".join(map(str, fields)),
-        'rawOrLabel': 'raw',
-        'rawOrLabelHeaders': 'raw',
-        'exportCheckboxLabel': 'false',
-        'exportSurveyFields': 'false',
-        'exportDataAccessGroups': 'false',
-        'returnFormat': 'json'
-    }
+            data = {
+                'token': PROJECT.api_token,
+                'content': 'record',
+                'format': 'json',
+                'type': 'flat',
+                'csvDelimiter': '',
+                'filterLogic': f'[netid] = "{netid}"',
+                'fields': ",".join(map(str, fields)),
+                'rawOrLabel': 'raw',
+                'rawOrLabelHeaders': 'raw',
+                'exportCheckboxLabel': 'false',
+                'exportSurveyFields': 'false',
+                'exportDataAccessGroups': 'false',
+                'returnFormat': 'json'
+            }
 
-    response = requests.post(PROJECT.api_url, data=data)
-    response.raise_for_status()
+            response = requests.post(PROJECT.api_url, data=data)
+            response.raise_for_status()
 
-    if len(response.json()) == 0:
-        return None
+            records = response.json()
 
-    assert len(response.json()) == 1, "Multiple records exist with same NetID: " \
-        f"{[ record['record_id'] for record in response.json() ]}"
+            if len(records) == 0:
+                return None
 
-    return response.json()[0]
+            assert len(records) == 1, "Multiple records exist with same NetID: " \
+                f"{[ record['record_id'] for record in records ]}"
+
+            record = records[0]
+
+        if redcap_registration_complete(record):
+            CACHE[netid] = record
+
+    return record
 
 
-@metric_redcap_request_seconds
+@metric_redcap_request_seconds()
 def register_participant(user_info: dict) -> str:
     """
     Returns the REDCap record ID of the participant newly registered with the
@@ -134,7 +154,7 @@ def register_participant(user_info: dict) -> str:
     return response.json()[0]
 
 
-@metric_redcap_request_seconds
+@metric_redcap_request_seconds()
 def generate_survey_link(record_id: str, event: str, instrument: str, instance: int = None) -> str:
     """
     Returns a generated survey link for the given *instrument* within the
@@ -205,7 +225,7 @@ def redcap_registration_complete(redcap_record: dict) -> bool:
             is_complete('enrollment_questionnaire', redcap_record))
 
 
-@metric_redcap_request_seconds
+@metric_redcap_request_seconds()
 def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     """
     Given a *redcap_record*, export the full list of related REDCap instances
@@ -405,7 +425,7 @@ def _max_instance(redcap_record: List[dict]) -> int:
     return max_instance
 
 
-@metric_redcap_request_seconds
+@metric_redcap_request_seconds()
 def create_new_testing_determination(redcap_record: dict):
     """
     Given a *redcap_record* to import, creates a new Testing Determination form
