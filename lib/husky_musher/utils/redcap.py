@@ -57,11 +57,13 @@ METRIC_REDCAP_REQUEST_SECONDS = Summary(
     registry = METRIC_REGISTRY,
 )
 
-def metric_redcap_request_seconds(function):
-    return METRIC_REDCAP_REQUEST_SECONDS.labels(function.__name__).time()(function)
+def metric_redcap_request_seconds(function_name = None):
+    def decorator(function):
+        return METRIC_REDCAP_REQUEST_SECONDS.labels(function_name or function.__name__).time()(function)
+    return decorator
 
 
-@metric_redcap_request_seconds
+@metric_redcap_request_seconds()
 def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     """
     Exports a REDCap record matching the given *user_info*. Returns None if no
@@ -110,7 +112,7 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     return records[0]
 
 
-@metric_redcap_request_seconds
+@metric_redcap_request_seconds()
 def register_participant(user_info: dict) -> str:
     """
     Returns the REDCap record ID of the participant newly registered with the
@@ -136,7 +138,7 @@ def register_participant(user_info: dict) -> str:
     return response.json()[0]
 
 
-@metric_redcap_request_seconds
+@metric_redcap_request_seconds()
 def generate_survey_link(record_id: str, event: str, instrument: str, instance: int = None) -> str:
     """
     Returns a generated survey link for the given *instrument* within the
@@ -207,7 +209,7 @@ def redcap_registration_complete(redcap_record: dict) -> bool:
             is_complete('enrollment_questionnaire', redcap_record))
 
 
-@metric_redcap_request_seconds
+@metric_redcap_request_seconds()
 def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     """
     Given a *redcap_record*, export the full list of related REDCap instances
@@ -407,7 +409,7 @@ def _max_instance(redcap_record: List[dict]) -> int:
     return max_instance
 
 
-@metric_redcap_request_seconds
+@metric_redcap_request_seconds()
 def create_new_testing_determination(redcap_record: dict):
     """
     Given a *redcap_record* to import, creates a new Testing Determination form
