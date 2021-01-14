@@ -3,13 +3,18 @@ import re
 import json
 import prometheus_flask_exporter
 from flask import Flask, redirect, render_template, request, url_for
+from pathlib import Path
 from prometheus_flask_exporter.multiprocess import MultiprocessPrometheusMetrics
 from werkzeug.exceptions import BadRequest, InternalServerError
 from .utils.shibboleth import *
 from .utils.redcap import *
-
+from . import configure_logger
 
 DEVELOPMENT_MODE = os.environ.get("FLASK_ENV", "production") == "development"
+
+base_dir     = Path(__file__).resolve().parent.parent.parent
+logging_config_file = base_dir / "logging.yaml"
+configure_logger(logging_config_file)
 
 app = Flask(__name__)
 
