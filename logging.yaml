@@ -1,0 +1,21 @@
+---
+version: 1
+
+# Leave the new structured log handler turned off until we figure out log storage destination.
+# Currently written as a file handler for structured logging proof of concept.
+
+# root:
+#   handlers:
+#     - fileHandler
+
+handlers:
+  fileHandler:
+    class: logging.FileHandler
+    level: INFO
+    formatter: json
+    filename: logs/husky_musher.log # Placeholder until we figure out log store
+
+formatters:
+  json:
+    class: pythonjsonlogger.jsonlogger.JsonFormatter
+    format: '%(asctime)s %(name)s %(levelname)s %(message)s %(filename)s %(funcname)s %(lineno)d %(module)s %(process)d'
