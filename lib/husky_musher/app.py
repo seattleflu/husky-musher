@@ -7,10 +7,9 @@ from prometheus_flask_exporter.multiprocess import MultiprocessPrometheusMetrics
 from werkzeug.exceptions import BadRequest, InternalServerError
 from .utils.shibboleth import *
 from .utils.redcap import *
-from . import configure_logger
+
 
 DEVELOPMENT_MODE = os.environ.get("FLASK_ENV", "production") == "development"
-configure_logger('logging.yaml')
 
 app = Flask(__name__)
 
