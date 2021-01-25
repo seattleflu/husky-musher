@@ -12,6 +12,7 @@ requests = "*"
 fsspec = "*"
 prometheus-flask-exporter = "*"
 diskcache = "*"
+python-json-logger = "*"
 
 [requires]
 python_version = "3.6"
