@@ -440,7 +440,7 @@ def create_new_testing_determination(redcap_record: dict):
         'redcap_repeat_instance': str(get_todays_repeat_instance()),
         'testing_trigger': YES,
         'testing_type': KIOSK_WALK_IN,
-        'testing_date': str(datetime.today().date()),
+        'testing_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         'testing_determination_internal_complete': COMPLETE,
     }]
 
