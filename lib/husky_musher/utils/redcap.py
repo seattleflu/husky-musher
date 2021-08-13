@@ -10,19 +10,20 @@ from id3c.cli.redcap import is_complete, Project
 from diskcache import FanoutCache
 
 
-REDCAP_API_URL = "https://redcap.iths.org/api/"
 DEVELOPMENT_MODE = os.environ.get("FLASK_ENV", "production") == "development"
 
 if DEVELOPMENT_MODE:
     # TESTING 2: Husky Coronavirus Testing
+    REDCAP_API_URL = "https://redcap.iths.org/api/"
     PROJECT_ID = 24515
     EVENT_ID = 743558
+    STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
 else:
-    # Husky Coronavirus Testing
-    PROJECT_ID = 23854
-    EVENT_ID = 742155
-
-STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
+    # Husky Coronavirus Testing 2021-2022
+    REDCAP_API_URL = "https://hct.redcap.rit.uw.edu/api/"
+    PROJECT_ID = 45
+    EVENT_ID = 129
+    STUDY_START_DATE = datetime(2021, 7, 14) # TODO - Before deploying, change to actual date when project is moved to production
 
 
 # TODO - Since creating PROJECT has side effects (network requests), we should
