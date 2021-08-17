@@ -14,13 +14,13 @@ DEVELOPMENT_MODE = os.environ.get("FLASK_ENV", "production") == "development"
 
 if DEVELOPMENT_MODE:
     # TESTING 2: Husky Coronavirus Testing
-    REDCAP_API_URL = "https://redcap.iths.org/api/"
+    REDCAP_API_URL = os.environ["REDCAP_API_URL"]  # ITHS REDCap server for development/testing
     PROJECT_ID = 24515
     EVENT_ID = 743558
     STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
 else:
     # Husky Coronavirus Testing 2021-2022
-    REDCAP_API_URL = "https://hct.redcap.rit.uw.edu/api/"
+    REDCAP_API_URL = os.environ["HCT_REDCAP_API_URL"]  # HCT REDCap server for production
     PROJECT_ID = 45
     EVENT_ID = 129
     STUDY_START_DATE = datetime(2021, 7, 14) # TODO - Before deploying, change to actual date when project is moved to production
