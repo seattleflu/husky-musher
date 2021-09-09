@@ -23,7 +23,7 @@ else:
     REDCAP_API_URL = os.environ["HCT_REDCAP_API_URL"]  # HCT REDCap server for production
     PROJECT_ID = 45
     EVENT_ID = 129
-    STUDY_START_DATE = datetime(2021, 7, 14) # TODO - Before deploying, change to actual date when project is moved to production
+    STUDY_START_DATE = datetime(2021, 9, 9) # Date testing opened on new HCT redcap server
 
 
 # TODO - Since creating PROJECT has side effects (network requests), we should
