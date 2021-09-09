@@ -84,6 +84,9 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
     netid = user_info["netid"]
     record = CACHE.get(netid)
 
+    if record and (record.get('project_id') != PROJECT_ID or record.get('redcap_api_url') != REDCAP_API_URL):
+        record = None
+
     if not record:
         with METRIC_FETCH_PARTICIPANT.time():
             fields = [
@@ -124,6 +127,8 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
             record = records[0]
 
         if redcap_registration_complete(record):
+            record['project_id'] = PROJECT_ID
+            record['redcap_api_url'] = REDCAP_API_URL
             CACHE[netid] = record
 
     return record
