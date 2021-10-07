@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils.redcap import *
+from utils.musher_redcap import *
 
 REDCAP_RECORD = {
     'record_id': '-1',
@@ -40,8 +40,8 @@ class TestLeadDawgs0(unittest.TestCase):
 
     def test_kiosk_registration_link(self):
         self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
-            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
-            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"{REDCAP_BASE_URL}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT_ID}&id={REDCAP_RECORD['record_id']}"
             f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
             f"&instance={get_todays_repeat_instance()}"
         )
@@ -99,8 +99,8 @@ class TestLeadDawgs1(unittest.TestCase):
 
     def test_kiosk_registration_link(self):
         self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
-            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
-            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"{REDCAP_BASE_URL}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT_ID}&id={REDCAP_RECORD['record_id']}"
             f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
             f"&instance={self.instances['target']}"
         )
@@ -161,8 +161,8 @@ class TestLeadDawgs2(unittest.TestCase):
 
     def test_kiosk_registration_link(self):
         self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
-            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
-            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"{REDCAP_BASE_URL}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT_ID}&id={REDCAP_RECORD['record_id']}"
             f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
             f"&instance={self.instances['incomplete_kr']}"
         )
@@ -220,8 +220,8 @@ class TestLeadDawgs3(unittest.TestCase):
 
     def test_kiosk_registration_link(self):
         self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
-            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
-            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"{REDCAP_BASE_URL}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT_ID}&id={REDCAP_RECORD['record_id']}"
             f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
             f"&instance={get_todays_repeat_instance()}"
         )
@@ -279,8 +279,8 @@ class TestLeadDawgs4(unittest.TestCase):
 
     def test_kiosk_registration_link(self):
         self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
-            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
-            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"{REDCAP_BASE_URL}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT_ID}&id={REDCAP_RECORD['record_id']}"
             f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
             f"&instance={get_todays_repeat_instance()}"
         )
@@ -332,8 +332,8 @@ class TestLeadDawgs5(unittest.TestCase):
 
     def test_kiosk_registration_link(self):
         self.assertEqual(kiosk_registration_link(REDCAP_RECORD, self.instances),
-            f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
-            f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
+            f"{REDCAP_BASE_URL}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
+            f"pid={PROJECT_ID}&id={REDCAP_RECORD['record_id']}"
             f"&arm=encounter_arm_1&event_id={EVENT_ID}&page=kiosk_registration_4c7f"
             f"&instance={one_week_ago() + 2}"
         )
