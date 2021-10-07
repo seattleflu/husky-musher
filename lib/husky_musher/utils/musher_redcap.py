@@ -5,8 +5,9 @@ from flask import request
 from datetime import datetime, timedelta
 from prometheus_client import CollectorRegistry, Summary
 from typing import Dict, Optional, List
-from urllib.parse import urlencode, urljoin
-from id3c.cli.redcap import is_complete, Project
+from urllib.parse import urlparse, urlencode, urljoin
+#from id3c.cli.redcap import is_complete, Project
+from redcap import Project
 from diskcache import FanoutCache
 
 
@@ -18,12 +19,25 @@ if DEVELOPMENT_MODE:
     PROJECT_ID = 24515
     EVENT_ID = 743558
     STUDY_START_DATE = datetime(2020, 9, 24) # Study start date of 2020-09-24
+    TOKEN_NAME = f"REDCAP_API_TOKEN_redcap.iths.org_{PROJECT_ID}"
 else:
     # Husky Coronavirus Testing 2021-2022
     REDCAP_API_URL = os.environ["HCT_REDCAP_API_URL"]  # HCT REDCap server for production
     PROJECT_ID = 45
     EVENT_ID = 129
     STUDY_START_DATE = datetime(2021, 9, 9) # Date testing opened on new HCT redcap server
+    TOKEN_NAME = f"REDCAP_API_TOKEN_hct.redcap.rit.uw.edu_{PROJECT_ID}"
+
+parsed_api_url = urlparse(REDCAP_API_URL)
+REDCAP_BASE_URL = f"{parsed_api_url.scheme}://{parsed_api_url.netloc}/"
+
+try:
+    token = os.environ[TOKEN_NAME]
+except KeyError as e:
+    raise ValueError(f"No REDCap API token available for {REDCAP_API_URL} project {PROJECT_ID}: environment variable «{TOKEN_NAME}» is missing") from e
+
+if not token:
+    raise ValueError(f"No REDCap API token available for {REDCAP_API_URL} project {PROJECT_ID}: environment variable «{TOKEN_NAME}» has no value")
 
 
 # TODO - Since creating PROJECT has side effects (network requests), we should
@@ -42,7 +56,7 @@ else:
 # coordination with unit tests.
 #
 # -kfay, 23 October 2020
-PROJECT = Project(REDCAP_API_URL, PROJECT_ID)
+PROJECT = Project(REDCAP_API_URL, token)
 
 # These values in REDCap must be imported as their raw codes, not their label,
 # else we get a 400 Client Error from REDCap when POSTing.
@@ -95,7 +109,7 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
             ]
 
             data = {
-                'token': PROJECT.api_token,
+                'token': PROJECT.token,
                 'content': 'record',
                 'format': 'json',
                 'type': 'flat',
@@ -110,7 +124,7 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
                 'returnFormat': 'json'
             }
 
-            response = requests.post(PROJECT.api_url, data=data)
+            response = requests.post(PROJECT.url, data=data)
             response.raise_for_status()
 
             records = response.json()
@@ -140,7 +154,7 @@ def register_participant(user_info: dict) -> str:
     # real record ID.
     records = [{**user_info, 'record_id': 'record ID cannot be blank'}]
     data = {
-        'token': PROJECT.api_token,
+        'token': PROJECT.token,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
@@ -150,7 +164,7 @@ def register_participant(user_info: dict) -> str:
         'returnContent': 'ids',
         'returnFormat': 'json'
     }
-    response = requests.post(PROJECT.api_url, data=data)
+    response = requests.post(PROJECT.url, data=data)
     response.raise_for_status()
     return response.json()[0]
 
@@ -164,7 +178,7 @@ def generate_survey_link(record_id: str, event: str, instrument: str, instance: 
     Will include the repeat *instance* if provided.
     """
     data = {
-        'token': PROJECT.api_token,
+        'token': PROJECT.token,
         'content': 'surveyLink',
         'format': 'json',
         'instrument': instrument,
@@ -176,7 +190,7 @@ def generate_survey_link(record_id: str, event: str, instrument: str, instance: 
     if instance:
         data['repeat_instance'] = str(instance)
 
-    response = requests.post(PROJECT.api_url, data=data)
+    response = requests.post(PROJECT.url, data=data)
     response.raise_for_status()
     return response.text
 
@@ -187,6 +201,11 @@ def get_todays_repeat_instance() -> int:
     with the first instance starting at 1.
     """
     return 1 + (datetime.today() - STUDY_START_DATE).days
+
+
+def is_complete(instrument_name: str, redcap_record: dict) -> bool:
+    complete_field = f"{instrument_name}_complete"
+    return str(redcap_record.get(complete_field)) == "2"
 
 
 def redcap_registration_complete(redcap_record: dict) -> bool:
@@ -245,7 +264,7 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     # useful to us, because all instances associated with a record are returned,
     # regardless of the instance's creation or modification date.
     data = {
-        'token': PROJECT.api_token,
+        'token': PROJECT.token,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
@@ -261,7 +280,7 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
         'returnFormat': 'json'
     }
 
-    response = requests.post(PROJECT.api_url, data=data)
+    response = requests.post(PROJECT.url, data=data)
     response.raise_for_status()
 
     encounters = response.json()
@@ -446,7 +465,7 @@ def create_new_testing_determination(redcap_record: dict):
     }]
 
     data = {
-        'token': PROJECT.api_token,
+        'token': PROJECT.token,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
@@ -457,7 +476,7 @@ def create_new_testing_determination(redcap_record: dict):
         'returnFormat': 'json'
     }
 
-    response = requests.post(PROJECT.api_url, data=data)
+    response = requests.post(PROJECT.url, data=data)
     response.raise_for_status()
 
     assert len(response.json()) == 1, \
@@ -615,7 +634,7 @@ def generate_redcap_link(redcap_record: dict, instance: int):
     Kiosk Registration form for the record's given REDCap repeat *instance*.
     """
     query = urlencode({
-        'pid': PROJECT.id,
+        'pid': PROJECT_ID,
         'id': redcap_record['record_id'],
         'arm': 'encounter_arm_1',
         'event_id': EVENT_ID,
@@ -623,5 +642,5 @@ def generate_redcap_link(redcap_record: dict, instance: int):
         'instance': instance,
     })
 
-    return urljoin(PROJECT.base_url,
+    return urljoin(REDCAP_BASE_URL,
         f"redcap_v{PROJECT.redcap_version}/DataEntry/index.php?{query}")
