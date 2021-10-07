@@ -13,6 +13,7 @@ fsspec = "*"
 prometheus-flask-exporter = "*"
 diskcache = "*"
 python-json-logger = "*"
+pycap = "*"
 
 [requires]
 python_version = "3.6"
