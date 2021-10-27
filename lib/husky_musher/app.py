@@ -122,7 +122,7 @@ def lookup():
     =========
     PT = participant
     TD = Testing Determination instrument
-    TOS = Test Order Survey insrument
+    TOS = Test Order Survey instrument
     KR = Kiosk Registration instrument
     """
     netid = request.form['netid'].lower().strip()

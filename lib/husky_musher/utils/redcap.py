@@ -303,7 +303,7 @@ def max_instance(instrument: str, redcap_record: List[dict], since: int,
     completed instances, and False filters only for incomplete or unverified
     instances). The default value for *complete* is True.
 
-    Returns None if no completed insrument is found.
+    Returns None if no completed instrument is found.
 
     >>> max_instance('kiosk_registration_4c7f', [ \
         {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2'}], \
@@ -514,7 +514,7 @@ def need_to_create_new_td_for_today(instances: Dict[str, int]) -> bool:
     given *target_instance*.
 
     *complete_kr_instance* is a KR instance number marked complete on or after the
-    given *target_intance*.
+    given *target_instance*.
 
     >>> need_to_create_new_td_for_today({'target': None, 'complete_tos': 1, 'complete_kr': 1})
     True
@@ -570,7 +570,7 @@ def need_to_create_new_kr_instance(instances: Dict[str, int]) -> bool:
     given *target_instance*.
 
     *complete_kr_instance* is a KR instance number marked complete on or after the
-    given *target_intance*.
+    given *target_instance*.
 
     >>> need_to_create_new_kr_instance({'target': None, 'complete_tos': 1, 'complete_kr': 1, 'incomplete_kr': None})
     False
