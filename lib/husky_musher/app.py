@@ -122,7 +122,7 @@ def lookup():
     =========
     PT = participant
     TD = Testing Determination instrument
-    TOS = Test Order Survey insrument
+    TOS = Test Order Survey instrument
     KR = Kiosk Registration instrument
     """
     netid = request.form['netid'].lower().strip()
@@ -154,7 +154,7 @@ def lookup():
     instances['complete_kr'] = max_instance('kiosk_registration_4c7f', recent_encounters,
         since=instances['target'])
     instances['incomplete_kr'] = max_instance('kiosk_registration_4c7f', recent_encounters,
-        since=instances['target'], complete=False)
+        since=instances['target'], complete=False, required_field='nasal_swab_q')
 
     if instances['complete_tos'] == get_todays_repeat_instance():
         # We won't test this PT twice in one day

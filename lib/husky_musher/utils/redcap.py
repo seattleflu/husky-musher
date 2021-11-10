@@ -234,7 +234,7 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     """
     fields = [
         'record_id', 'testing_trigger', 'testing_determination_complete',
-        'kiosk_registration_4c7f_complete', 'test_order_survey_complete'
+        'kiosk_registration_4c7f_complete', 'test_order_survey_complete', 'nasal_swab_q'
     ]
     # Unfortunately, despite its appearance in the returned response from REDCap,
     # `redcap_repeat_instance` is not a field we can query by when exporting
@@ -295,7 +295,7 @@ def max_instance_testing_triggered(redcap_record: List[dict]) -> Optional[int]:
 
 
 def max_instance(instrument: str, redcap_record: List[dict], since: int,
-    complete: bool=True) -> Optional[int]:
+    complete: bool=True, required_field: str='') -> Optional[int]:
     """
     Returns the most recent instance number in a *redcap_record* on or after the
     given filter instance *since*. Filters also by events with an *instrument*
@@ -303,7 +303,7 @@ def max_instance(instrument: str, redcap_record: List[dict], since: int,
     completed instances, and False filters only for incomplete or unverified
     instances). The default value for *complete* is True.
 
-    Returns None if no completed insrument is found.
+    Returns None if no completed instrument is found.
 
     >>> max_instance('kiosk_registration_4c7f', [ \
         {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2'}], \
@@ -349,12 +349,41 @@ def max_instance(instrument: str, redcap_record: List[dict], since: int,
         {'redcap_repeat_instance': '2', 'test_order_survey_complete': '', \
             'kiosk_registration_4c7f_complete': '2'}], \
         since=0)
+
+    >>> max_instance('kiosk_registration_4c7f', [ \
+        {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2', 'nasal_swab_q': ''}, \
+        {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '2', 'nasal_swab_q': ''}, \
+        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0', 'nasal_swab_q': ''}], \
+        since=1, complete=False, required_field='nasal_swab_q')
+
+    >>> max_instance('kiosk_registration_4c7f', [ \
+        {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2', 'nasal_swab_q': ''}, \
+        {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '2', 'nasal_swab_q': '2021-09-10'}, \
+        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0', 'nasal_swab_q': '2021-09-11'}], \
+        since=1, complete=False, required_field='nasal_swab_q')
+    3
+
+    >>> max_instance('kiosk_registration_4c7f', [ \
+        {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2', 'nasal_swab_q': '2021-09-09'}, \
+        {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '2', 'nasal_swab_q': ''}, \
+        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0', 'nasal_swab_q': '2021-09-11'}], \
+        since=1, required_field='nasal_swab_q')
+    1
+
+    >>> max_instance('kiosk_registration_4c7f', [ \
+        {'redcap_repeat_instance': '1', 'kiosk_registration_4c7f_complete': '2', 'nasal_swab_q': '2021-09-09'}, \
+        {'redcap_repeat_instance': '2', 'kiosk_registration_4c7f_complete': '2', 'nasal_swab_q': '2021-09-10'}, \
+        {'redcap_repeat_instance': '3', 'kiosk_registration_4c7f_complete': '0', 'nasal_swab_q': '2021-09-11'}], \
+        since=1, required_field='nasal_swab_q')
+    2
+
     """
     events_instrument_complete = [
         encounter
         for encounter in redcap_record
         if encounter[f"{instrument}_complete"] != ''
         and is_complete(instrument, encounter) == complete
+        and (not required_field or encounter[required_field] != '')
     ]
 
     # Filter since the latest instance where testing was triggered.
@@ -485,7 +514,7 @@ def need_to_create_new_td_for_today(instances: Dict[str, int]) -> bool:
     given *target_instance*.
 
     *complete_kr_instance* is a KR instance number marked complete on or after the
-    given *target_intance*.
+    given *target_instance*.
 
     >>> need_to_create_new_td_for_today({'target': None, 'complete_tos': 1, 'complete_kr': 1})
     True
@@ -541,7 +570,7 @@ def need_to_create_new_kr_instance(instances: Dict[str, int]) -> bool:
     given *target_instance*.
 
     *complete_kr_instance* is a KR instance number marked complete on or after the
-    given *target_intance*.
+    given *target_instance*.
 
     >>> need_to_create_new_kr_instance({'target': None, 'complete_tos': 1, 'complete_kr': 1, 'incomplete_kr': None})
     False
