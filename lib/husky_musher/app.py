@@ -6,7 +6,6 @@ from flask import Flask, redirect, render_template, request, url_for
 from pathlib import Path
 from prometheus_flask_exporter.multiprocess import MultiprocessPrometheusMetrics
 from werkzeug.exceptions import BadRequest, InternalServerError
-from .utils.shibboleth import *
 from .utils.redcap import *
 from . import configure_logger
 
@@ -64,10 +63,10 @@ def main():
     # Get NetID and other attributes from Shibboleth data
     if DEVELOPMENT_MODE:
         remote_user = os.environ.get("REMOTE_USER")
-        user_info = extract_user_info(os.environ)
+        user_info = {"netid": os.environ["uid"]}
     else:
         remote_user = request.remote_user
-        user_info = extract_user_info(request.environ)
+        user_info = {"netid": request.environ["uid"]}
 
     if not (remote_user and user_info.get("netid")):
         raise InternalServerError('No remote user!')
