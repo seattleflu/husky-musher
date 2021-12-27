@@ -114,6 +114,9 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
             response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
             response.raise_for_status()
 
+            assert 'application/json' in response.headers.get('Content-Type'), "Unexpected content type " \
+                f"≪{response.headers.get('Content-Type')}≫, expected ≪application/json≫."
+
             records = response.json()
 
             if len(records) == 0:
@@ -153,8 +156,15 @@ def register_participant(user_info: dict) -> str:
     }
     response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
-    return response.json()[0]
+    
+    assert 'application/json' in response.headers.get('Content-Type'), "Unexpected content type " \
+        f"≪{response.headers.get('Content-Type')}≫, expected ≪application/json≫."
 
+    records = response.json()
+
+    assert len(records) == 1, f"{len(records)} records returned, expected 1."
+
+    return records[0]
 
 @metric_redcap_request_seconds()
 def generate_survey_link(record_id: str, event: str, instrument: str, instance: int = None) -> str:
@@ -179,6 +189,10 @@ def generate_survey_link(record_id: str, event: str, instrument: str, instance: 
 
     response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
+
+    assert 'text/html' in response.headers.get('Content-Type'), "Unexpected content type " \
+        f"≪{response.headers.get('Content-Type')}≫, expected ≪text/html≫."
+
     return response.text
 
 
@@ -264,6 +278,9 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
 
     response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
+
+    assert 'application/json' in response.headers.get('Content-Type'), "Unexpected content type " \
+        f"≪{response.headers.get('Content-Type')}≫, expected ≪application/json≫."
 
     encounters = response.json()
     return [ e for e in encounters if e['redcap_repeat_instance'] >= one_week_ago() ]
@@ -489,6 +506,9 @@ def create_new_testing_determination(redcap_record: dict):
 
     response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
+
+    assert 'application/json' in response.headers.get('Content-Type'), "Unexpected content type " \
+        f"≪{response.headers.get('Content-Type')}≫, expected ≪application/json≫."
 
     assert len(response.json()) == 1, \
         f"REDCap updated {len(response.json())} records, expected 1."
