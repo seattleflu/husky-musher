@@ -11,6 +11,7 @@ from diskcache import FanoutCache
 
 
 DEVELOPMENT_MODE = os.environ.get("FLASK_ENV", "production") == "development"
+TIMEOUT = 30
 
 if DEVELOPMENT_MODE:
     # TESTING 2: Husky Coronavirus Testing
@@ -110,7 +111,7 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
                 'returnFormat': 'json'
             }
 
-            response = requests.post(PROJECT.api_url, data=data)
+            response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
             response.raise_for_status()
 
             records = response.json()
@@ -150,7 +151,7 @@ def register_participant(user_info: dict) -> str:
         'returnContent': 'ids',
         'returnFormat': 'json'
     }
-    response = requests.post(PROJECT.api_url, data=data)
+    response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
     return response.json()[0]
 
@@ -176,7 +177,7 @@ def generate_survey_link(record_id: str, event: str, instrument: str, instance: 
     if instance:
         data['repeat_instance'] = str(instance)
 
-    response = requests.post(PROJECT.api_url, data=data)
+    response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
     return response.text
 
@@ -261,7 +262,7 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
         'returnFormat': 'json'
     }
 
-    response = requests.post(PROJECT.api_url, data=data)
+    response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
 
     encounters = response.json()
@@ -486,7 +487,7 @@ def create_new_testing_determination(redcap_record: dict):
         'returnFormat': 'json'
     }
 
-    response = requests.post(PROJECT.api_url, data=data)
+    response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
 
     assert len(response.json()) == 1, \
