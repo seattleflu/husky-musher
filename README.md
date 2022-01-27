@@ -37,13 +37,16 @@ The required environment variables are:
 ## Tests
 Run doctests on the utils functions with:
 ```sh
-pipenv run python3 -m doctest lib/husky_musher/utils/*
+FLASK_ENV=development envdir <path to redcap envdir> pipenv run python3 -m doctest lib/husky_musher/utils/*
 ```
 
 Run unit tests with:
 ```sh
-pipenv run python -m unittest lib/husky_musher/tests/*
+FLASK_ENV=development envdir <path to redcap envdir> pipenv run python -m unittest lib/husky_musher/tests/*
 ```
+
+Note that although running the tests accesses the redcap envdir (specifically `REDCAP_API_URL`), it does not use these variables to connect to a project,
+so dummy environment variables can be used if desired.
 
 
 ## Attributions
