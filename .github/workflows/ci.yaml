@@ -4,6 +4,10 @@ on:
   - push
   - pull_request
 
+env:
+  REDCAP_API_URL: 'https://dummy.redcap.url/api'
+  FLASK_ENV: development
+
 jobs:
   test:
     name: python=${{ matrix.python }} os=${{ matrix.os }}
@@ -29,9 +33,6 @@ jobs:
 
       - name: Install Dependencies
         run: pipenv sync --dev
-
-      - name: Run doctest
-        run: pipenv run python3 -m doctest lib/husky_musher/utils/*
 
       - name: Run unittest
         run: pipenv run python -m unittest lib/husky_musher/tests/*

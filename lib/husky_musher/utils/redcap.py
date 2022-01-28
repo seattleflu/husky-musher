@@ -26,24 +26,23 @@ else:
     EVENT_ID = 129
     STUDY_START_DATE = datetime(2021, 9, 9) # Date testing opened on new HCT redcap server
 
+# Load the RedCap project lazily. Initialize a container project so that
+# if this file is run from the test suite, the test suite can inject a
+# dummy project into the container before a RedCap project is initialized.
+# If instead this file is imported by the Flask application, it will
+# load the connection to the RedCap project as determined by our
+# environment configuration
+class ProjectContainer:
+    def __init__(self) -> None:
+        self.redcap = None
 
-# TODO - Since creating PROJECT has side effects (network requests), we should
-# # probably define it lazily (e.g. with `global PROJECT` and then assigning it
-# the Project object `if not PROJECT`.
-#
-# During development, I could not get unit tests to run without running into a
-# NameError saying PROJECT is not defined.
-# Tom left some helpful feedback in a PR comment:
-# > I suspect this is because the tests as-is access PROJECT directly but it was
-# > only initialized with a value on the first call to generate_redcap_link().
-# > The references to PROJECT in the tests are resolved before that first call
-# > happens, so PROJECT was unset.
-#
-# It would be nice to investigate further how to define PROJECT lazily in
-# coordination with unit tests.
-#
-# -kfay, 23 October 2020
-PROJECT = Project(REDCAP_API_URL, PROJECT_ID)
+    def load_project(self):
+        """load the desired redcap project if no project has been set"""
+        if not self.redcap:
+            self.redcap = Project(REDCAP_API_URL, PROJECT_ID)
+        return self.redcap
+
+LazyProject = ProjectContainer()
 
 # These values in REDCap must be imported as their raw codes, not their label,
 # else we get a 400 Client Error from REDCap when POSTing.
@@ -96,7 +95,7 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
             ]
 
             data = {
-                'token': PROJECT.api_token,
+                'token': LazyProject.redcap.api_token,
                 'content': 'record',
                 'format': 'json',
                 'type': 'flat',
@@ -111,7 +110,7 @@ def fetch_participant(user_info: dict) -> Optional[Dict[str, str]]:
                 'returnFormat': 'json'
             }
 
-            response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
+            response = requests.post(LazyProject.redcap.api_url, data=data, timeout=TIMEOUT)
             response.raise_for_status()
 
             assert 'application/json' in response.headers.get('Content-Type'), "Unexpected content type " \
@@ -144,7 +143,7 @@ def register_participant(user_info: dict) -> str:
     # real record ID.
     records = [{**user_info, 'record_id': 'record ID cannot be blank'}]
     data = {
-        'token': PROJECT.api_token,
+        'token': LazyProject.redcap.api_token,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
@@ -154,9 +153,9 @@ def register_participant(user_info: dict) -> str:
         'returnContent': 'ids',
         'returnFormat': 'json'
     }
-    response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
+    response = requests.post(LazyProject.redcap.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
-    
+
     assert 'application/json' in response.headers.get('Content-Type'), "Unexpected content type " \
         f"≪{response.headers.get('Content-Type')}≫, expected ≪application/json≫."
 
@@ -175,7 +174,7 @@ def generate_survey_link(record_id: str, event: str, instrument: str, instance: 
     Will include the repeat *instance* if provided.
     """
     data = {
-        'token': PROJECT.api_token,
+        'token': LazyProject.redcap.api_token,
         'content': 'surveyLink',
         'format': 'json',
         'instrument': instrument,
@@ -187,7 +186,7 @@ def generate_survey_link(record_id: str, event: str, instrument: str, instance: 
     if instance:
         data['repeat_instance'] = str(instance)
 
-    response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
+    response = requests.post(LazyProject.redcap.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
 
     assert 'text/html' in response.headers.get('Content-Type'), "Unexpected content type " \
@@ -260,7 +259,7 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
     # useful to us, because all instances associated with a record are returned,
     # regardless of the instance's creation or modification date.
     data = {
-        'token': PROJECT.api_token,
+        'token': LazyProject.redcap.api_token,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
@@ -276,7 +275,7 @@ def fetch_encounter_events_past_week(redcap_record: dict) -> List[dict]:
         'returnFormat': 'json'
     }
 
-    response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
+    response = requests.post(LazyProject.redcap.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
 
     assert 'application/json' in response.headers.get('Content-Type'), "Unexpected content type " \
@@ -493,7 +492,7 @@ def create_new_testing_determination(redcap_record: dict):
     }]
 
     data = {
-        'token': PROJECT.api_token,
+        'token': LazyProject.redcap.api_token,
         'content': 'record',
         'format': 'json',
         'type': 'flat',
@@ -504,7 +503,7 @@ def create_new_testing_determination(redcap_record: dict):
         'returnFormat': 'json'
     }
 
-    response = requests.post(PROJECT.api_url, data=data, timeout=TIMEOUT)
+    response = requests.post(LazyProject.redcap.api_url, data=data, timeout=TIMEOUT)
     response.raise_for_status()
 
     assert 'application/json' in response.headers.get('Content-Type'), "Unexpected content type " \
@@ -643,8 +642,11 @@ def kiosk_registration_link(redcap_record: dict, instances: Dict[str, int]) -> s
     incomplete_kr_instance = instances['incomplete_kr']
 
     if need_to_create_new_td_for_today(instances):
-        # Create TD instance based on # of days since project start.
-        create_new_testing_determination(redcap_record)
+        # Create TD instance based on # of days since project start, but
+        # only if this is not the testing project
+        if LazyProject.redcap.id != -1:
+            create_new_testing_determination(redcap_record)
+
         instance = get_todays_repeat_instance()
 
     elif need_to_create_new_kr_instance(instances):
@@ -665,7 +667,7 @@ def generate_redcap_link(redcap_record: dict, instance: int):
     Kiosk Registration form for the record's given REDCap repeat *instance*.
     """
     query = urlencode({
-        'pid': PROJECT.id,
+        'pid': LazyProject.redcap.id,
         'id': redcap_record['record_id'],
         'arm': 'encounter_arm_1',
         'event_id': EVENT_ID,
@@ -673,5 +675,5 @@ def generate_redcap_link(redcap_record: dict, instance: int):
         'instance': instance,
     })
 
-    return urljoin(PROJECT.base_url,
-        f"redcap_v{PROJECT.redcap_version}/DataEntry/index.php?{query}")
+    return urljoin(LazyProject.redcap.base_url,
+        f"redcap_v{LazyProject.redcap.redcap_version}/DataEntry/index.php?{query}")
