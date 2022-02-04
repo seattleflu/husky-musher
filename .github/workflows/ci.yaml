@@ -35,4 +35,7 @@ jobs:
         run: pipenv sync --dev
 
       - name: Run unittest
-        run: pipenv run python -m unittest lib/husky_musher/tests/*
+        run: pipenv run python -m unittest lib/husky_musher/tests/* -v
+
+      - name: Run doctest
+        run: pipenv run python -m doctest lib/husky_musher/utils/* -v

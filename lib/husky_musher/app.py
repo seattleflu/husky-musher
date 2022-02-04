@@ -17,8 +17,9 @@ configure_logger(logging_config_file)
 
 app = Flask(__name__)
 
-# Load the RedCap project from utils that is associated with our environment
-LazyProject.load_project()
+# Load the RedCap project and Fanout cache from within lazy container in utils
+LazyObjects.get_project()
+LazyObjects.get_cache()
 
 # Setup Prometheus metrics collector.
 if "prometheus_multiproc_dir" in os.environ:

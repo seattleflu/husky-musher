@@ -20,7 +20,7 @@ class TestingProject():
 
 
 # inject the test project into the redcap utils' lazy loader
-redcap_utils.LazyProject.redcap = TestingProject()
+redcap_utils.LazyObjects.redcap_project = TestingProject()
 
 
 class TestLeadDawgs0(unittest.TestCase):
@@ -53,7 +53,7 @@ class TestLeadDawgs0(unittest.TestCase):
         self.assertFalse(redcap_utils.need_to_create_new_kr_instance(self.instances))
 
     def test_kiosk_registration_link(self):
-        PROJECT = redcap_utils.LazyProject.load_project()
+        PROJECT = redcap_utils.LazyObjects.get_project()
         self.assertEqual(redcap_utils.kiosk_registration_link(REDCAP_RECORD, self.instances),
             f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
             f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
@@ -113,7 +113,7 @@ class TestLeadDawgs1(unittest.TestCase):
         self.assertTrue(redcap_utils.need_to_create_new_kr_instance(self.instances))
 
     def test_kiosk_registration_link(self):
-        PROJECT = redcap_utils.LazyProject.load_project()
+        PROJECT = redcap_utils.LazyObjects.get_project()
         self.assertEqual(redcap_utils.kiosk_registration_link(REDCAP_RECORD, self.instances),
             f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
             f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
@@ -176,7 +176,7 @@ class TestLeadDawgs2(unittest.TestCase):
         self.assertTrue(self.instances['incomplete_kr'] is not None)
 
     def test_kiosk_registration_link(self):
-        PROJECT = redcap_utils.LazyProject.load_project()
+        PROJECT = redcap_utils.LazyObjects.get_project()
         self.assertEqual(redcap_utils.kiosk_registration_link(REDCAP_RECORD, self.instances),
             f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
             f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
@@ -236,7 +236,7 @@ class TestLeadDawgs3(unittest.TestCase):
         self.assertFalse(redcap_utils.need_to_create_new_kr_instance(self.instances))
 
     def test_kiosk_registration_link(self):
-        PROJECT = redcap_utils.LazyProject.load_project()
+        PROJECT = redcap_utils.LazyObjects.get_project()
         self.assertEqual(redcap_utils.kiosk_registration_link(REDCAP_RECORD, self.instances),
             f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
             f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
@@ -296,7 +296,7 @@ class TestLeadDawgs4(unittest.TestCase):
         self.assertFalse(redcap_utils.need_to_create_new_kr_instance(self.instances))
 
     def test_kiosk_registration_link(self):
-        PROJECT = redcap_utils.LazyProject.load_project()
+        PROJECT = redcap_utils.LazyObjects.get_project()
         self.assertEqual(redcap_utils.kiosk_registration_link(REDCAP_RECORD, self.instances),
             f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
             f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
@@ -350,7 +350,7 @@ class TestLeadDawgs5(unittest.TestCase):
         self.assertTrue(redcap_utils.need_to_create_new_kr_instance(self.instances))
 
     def test_kiosk_registration_link(self):
-        PROJECT = redcap_utils.LazyProject.load_project()
+        PROJECT = redcap_utils.LazyObjects.get_project()
         self.assertEqual(redcap_utils.kiosk_registration_link(REDCAP_RECORD, self.instances),
             f"{PROJECT.base_url}redcap_v{PROJECT.redcap_version}/DataEntry/index.php?"
             f"pid={PROJECT.id}&id={REDCAP_RECORD['record_id']}"
