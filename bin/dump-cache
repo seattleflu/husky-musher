@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
+import sys
+from pathlib import Path
 from id3c.json import dump_ndjson
-from husky_musher.utils.redcap import CACHE
 
-dump_ndjson(map(CACHE.get, CACHE))
+# by default, python does not include this path in its search path,
+# so we have to explicitly insert the path to the musher directory
+# in order to import it successfully
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+from husky_musher.utils.redcap import LazyObjects
+
+dump_ndjson(map(LazyObjects.get_cache().get, LazyObjects.get_cache()))

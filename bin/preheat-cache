@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-from husky_musher.utils.redcap import CACHE, PROJECT, redcap_registration_complete
+import sys
+from pathlib import Path
+
+# by default, python does not include this path in its search path,
+# so we have to explicitly insert the path to the musher directory
+# in order to import it successfully
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+from husky_musher.utils.redcap import LazyObjects, redcap_registration_complete
 
 # XXX FIXME: This is copied from fetch_participant() and thus could drift out
 # of sync.  I don't anticipate we'll use this script more than once or twice,
@@ -15,7 +22,7 @@ fields = [
     'enrollment_questionnaire_complete',
 ]
 
-records = PROJECT.records(raw = True, fields = fields, filter = '[netid] <> ""')
+records = LazyObjects.get_project().records(raw = True, fields = fields, filter = '[netid] <> ""')
 print(f"{len(records):7,} records fetched")
 
 n = 0
@@ -24,8 +31,8 @@ for record in records:
     netid = record.get("netid")
 
     if netid and redcap_registration_complete(record):
-        CACHE[netid] = record
+        LazyObjects.get_cache()[netid] = record
         n += 1
 
 print(f"{n:7,} records cached")
-print(f"{len(CACHE):7,} records in cache")
+print(f"{len(LazyObjects.get_cache()):7,} records in cache")
