@@ -1,0 +1,21 @@
+# Ignore everything
+*
+
+# except these files
+!/.gitignore
+!/app.py
+!/Pipfile
+!/Pipfile.lock
+!/README.md
+!/logging.yaml
+
+# and these directories
+!/bin/
+!/lib/
+!/lib/husky_musher/
+!/notes/
+
+# and this nested file
+!/.github/
+!/.github/workflows/
+!/.github/workflows/ci.yaml

@@ -1,0 +1,7 @@
+# Ignore everything
+*
+
+# except these files
+!/.gitignore
+!/dump-cache
+!/preheat-cache

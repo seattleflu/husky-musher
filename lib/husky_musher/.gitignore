@@ -1,0 +1,12 @@
+# Ignore everything
+*
+
+# except these files
+!/.gitignore
+!/*.py
+
+# and these directories
+!/static/
+!/templates/
+!/tests/
+!/utils/
