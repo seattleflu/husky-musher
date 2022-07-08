@@ -30,8 +30,8 @@ surname=Sibley \
 See Pipfile for required libraries.
 
 The required environment variables are:
-* `REDCAP_API_TOKEN_redcap.iths.org_23854` (production)
-* `REDCAP_API_TOKEN_redcap.iths.org_24515` (development)
+* `REDCAP_API_TOKEN_hct.redcap.rit.uw.edu_148` (production)
+* `REDCAP_API_TOKEN_hct.redcap.rit.uw.edu_139` (development)
 
 
 ## Tests
