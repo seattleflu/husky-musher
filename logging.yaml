@@ -1,19 +1,16 @@
 ---
 version: 1
 
-# Leave the new structured log handler turned off until we figure out log storage destination.
-# Currently written as a file handler for structured logging proof of concept.
+root:
+  handlers:
+    - fileHandler
 
-# root:
-#   handlers:
-#     - fileHandler
-
-# handlers:
-#   fileHandler:
-#     class: logging.FileHandler
-#     level: INFO
-#     formatter: json
-#     filename: logs/husky_musher.log # Placeholder until we figure out log store
+handlers:
+  fileHandler:
+    class: logging.FileHandler
+    level: INFO
+    formatter: json
+    filename: /var/log/uwsgi/app/husky_musher.log
 
 formatters:
   json:
