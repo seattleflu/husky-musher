@@ -2,7 +2,8 @@ import os
 import re
 import json
 import prometheus_flask_exporter
-from flask import Flask, redirect, render_template, request, url_for
+from functools import wraps
+from flask import Flask, abort, redirect, render_template, request, url_for
 from pathlib import Path
 from prometheus_flask_exporter.multiprocess import MultiprocessPrometheusMetrics
 from werkzeug.exceptions import BadRequest, InternalServerError
@@ -61,6 +62,13 @@ def handle_unexpected_error(error):
     app.logger.error(f'Unexpected error occurred: {error}', exc_info=error)
     return render_template('something_went_wrong.html'), 500
 
+# decorator to disable an existing route, rendering a 404 error instead
+def route_disabled(func):
+    @wraps(func)
+    def route(*args, **kwargs):
+        raise abort(404)
+    return route
+
 @app.route('/')
 def main():
     # Get NetID and other attributes from Shibboleth data
@@ -107,14 +115,17 @@ def main():
 
 
 @app.route('/lead-dawgs')
+@route_disabled
 def lead_dawgs():
     return render_template('lead_dawgs.html')
 
 @app.route('/lead-dawgs/lookup', methods=['GET'])
+@route_disabled
 def redirect_to_lead_dawgs():
     return redirect(url_for('.lead_dawgs'))
 
 @app.route('/lead-dawgs/lookup', methods=['POST'])
+@route_disabled
 def lookup():
     """
     Automates the survey flow and logic for when a participant walks up to a
