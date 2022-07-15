@@ -26,6 +26,9 @@ surname=Sibley \
   pipenv run flask run
 ```
 
+You will also need to setup a logfile at `/var/log/husky_musher/husky_musher.log` and make sure
+that the user running the application has write permissions to the file.
+
 ## Requirements
 See Pipfile for required libraries.
 
