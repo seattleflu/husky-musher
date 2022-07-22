@@ -5,7 +5,7 @@ on:
   - pull_request
 
 env:
-  REDCAP_API_URL: 'https://dummy.redcap.url/api'
+  HCT_REDCAP_API_URL: 'https://dummy.redcap.url/api'
   FLASK_ENV: development
 
 jobs:
