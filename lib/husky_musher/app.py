@@ -48,6 +48,7 @@ def set_cache_control(response):
 
 @app.errorhandler(404)
 def page_not_found(error):
+    app.logger.info(f'Page Not Found', exc_info=error)
     return render_template('page_not_found.html'), 404
 
 @app.errorhandler(InvalidNetId)
@@ -88,6 +89,7 @@ def main():
         # If not in REDCap project, create new record
         new_record_id = register_participant(user_info)
         redcap_record = { 'record_id': new_record_id }
+        app.logger.info(f'Registered new participant with record_id: <{new_record_id}>.')
 
     # Because of REDCap's survey queue logic, we can point a participant to an
     # upstream survey. If they've completed it, REDCap will automatically direct
@@ -104,6 +106,7 @@ def main():
         event = 'encounter_arm_1'
         instrument = 'daily_attestation'
         repeat_instance = get_todays_repeat_instance()
+        app.logger.debug(f'Using repeat instance number: <{repeat_instance}>.')
 
         if repeat_instance <= 0:
             # This should never happen!
