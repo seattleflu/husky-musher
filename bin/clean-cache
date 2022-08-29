@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+import sys, logging, argparse, os
+from pathlib import Path
+
+# by default, python does not include this path in its search path,
+# so we have to explicitly insert the path to the musher directory
+# in order to import it successfully
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+from husky_musher.utils.redcap import LazyObjects, fetch_deleted_records
+from husky_musher import configure_logger
+
+base_dir = Path(__file__).resolve().parent.parent
+logging_config_file = base_dir / "logging.yaml"
+configure_logger(logging_config_file)
+
+LOG = logging.getLogger(__name__)
+
+def main(args):
+    records = fetch_deleted_records(args.begin_time, args.end_time)
+
+    # don't bother if there are no deleted records to handle
+    if not records:
+        LOG.info(f'Did not find any deleted REDCap records within timeframe <{args.begin_time} to {args.end_time}>.')
+        return
+
+    # records look like {"details": "record_id = '1'"}
+    deleted_ids = [int(deleted_record['details'].split('=')[1].replace("'", "").strip()) for deleted_record in records]
+    cached_records = map(LazyObjects.get_cache().get, LazyObjects.get_cache())
+    LOG.debug(f'Found <{len(deleted_ids)}> deleted REDCap records.')
+
+    # we cache by netid, so must loop through all cached records to find deleted record ids
+    for record in cached_records:
+        if int(record['record_id']) in deleted_ids:
+            LazyObjects.get_cache().delete(record['netid'])
+            LOG.info(f'Deleted record with id <{record["record_id"]}> from the musher cache.')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Remove deleted records from the Husky Musher cache. Please take care: If you do not include an hour and minute \
+        on the end time argument the REDCap API will return a 200 status code and empty json object even if records were deleted during your date range.')
+    parser.add_argument('--begin-time', dest='begin_time', help='The beginning time of the logs which are used to find deleted records (YYYY-MM-DD HH:MM)')
+    parser.add_argument('--end-time', dest='end_time', default='', help='The ending time of the logs which are used to find deleted records (YYYY-MM-DD HH:MM)')
+
+    main(parser.parse_args())

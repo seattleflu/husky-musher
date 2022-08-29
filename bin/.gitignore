@@ -5,3 +5,4 @@
 !/.gitignore
 !/dump-cache
 !/preheat-cache
+!/clean-cache
