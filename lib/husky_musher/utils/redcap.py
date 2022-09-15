@@ -199,6 +199,32 @@ def generate_survey_link(record_id: str, event: str, instrument: str, instance: 
     return response.text
 
 
+@metric_redcap_request_seconds()
+def fetch_deleted_records(begin_time, end_time):
+    """
+    Returns the REDCap log records of REDCap records which have been deleted
+    at some point between *begin_time* and *end_time*.
+    """
+    data = {
+            'token': LazyObjects.get_project().api_token,
+            'content': 'log',
+            'logtype': 'record_delete',
+            'user': '',
+            'record': '',
+            'beginTime': begin_time,
+            'endTime': end_time,
+            'format': 'json',
+            'returnFormat': 'json'
+        }
+
+    response = post_and_validate_redcap_request(LazyObjects.get_project().api_url, data=data, timeout=TIMEOUT)
+
+    assert 'application/json' in response.headers.get('Content-Type'), "Unexpected content type " \
+        f"≪{response.headers.get('Content-Type')}≫, expected ≪application/json≫."
+
+    return response.json()
+
+
 def get_todays_repeat_instance() -> int:
     """
     Returns the repeat instance number, i.e. days since the start of the study
@@ -681,3 +707,21 @@ def generate_redcap_link(redcap_record: dict, instance: int):
 
     return urljoin(LazyObjects.get_project().base_url,
         f"redcap_v{LazyObjects.get_project().redcap_version}/DataEntry/index.php?{query}")
+
+
+def post_and_validate_redcap_request(api_url, data, headers=None, timeout=300, max_retry_count=10):
+    retry_count = 0
+
+    # Added as workaround for REDCap API bug which incorrectly returns 200 status code
+    # and HTML response with "unknown error" message and substring included below, which
+    # in many cases succeeds with additional attempts.
+    # -drr, 7/28/2021
+    while retry_count <= max_retry_count:
+        response = requests.post(api_url, data=data, headers=headers, timeout=timeout)
+        if response.status_code==200 and 'multiple browser tabs of the same REDCap page. If that is not the case' in response.text:
+            retry_count += 1
+            continue
+        break
+
+    response.raise_for_status()
+    return response
